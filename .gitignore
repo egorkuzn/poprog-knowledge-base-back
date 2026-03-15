@@ -1,0 +1,30 @@
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+out/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Eclipse / STS
+.classpath
+.project
+.settings/
+.apt_generated/
+.factorypath
+.springBeans
+.sts4-cache/
+bin/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Spring Initializr help file (optional)
+HELP.md

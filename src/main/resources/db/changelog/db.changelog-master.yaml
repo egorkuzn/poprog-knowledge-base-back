@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/001-create-publication-table.sql
+  - include:
+      file: db/changelog/002-seed-publications.sql
+  - include:
+      file: db/changelog/003-create-student-work-tables.sql
+  - include:
+      file: db/changelog/004-seed-student-works.sql

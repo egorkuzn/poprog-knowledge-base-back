@@ -1,0 +1,32 @@
+--liquibase formatted sql
+
+--changeset codex:004-seed-student-works
+INSERT INTO project_type (title, hash) VALUES
+('Язык IndustrialC', 'industrial-c'),
+('Инженерия требований и EDTL', 'requirements-engineering-and-edtl'),
+('Верификация и отладка процесс-ориентированных программ', 'verification-and-debugging-of-process-oriented-programs'),
+('Статический анализ процесс-ориентированных спецификаций', 'static-analysis-of-process-oriented-specifications'),
+('webIDE и модули расширения', 'webide-and-extension-modules'),
+('Стратегии планирования и балансировки', 'scheduling-and-balancing-strategies'),
+('Распределенные микроконтроллерные системы', 'distributed-microcontroller-systems');
+
+INSERT INTO student_work (project_type_id, authors, theme, published) VALUES
+((SELECT id FROM project_type WHERE hash = 'industrial-c'), 'Розов А. С. , рук. Зюбин В. Е.', 'Разработка языковых и инструментальных средств процесс-ориентированного программирования для открытых микроконтроллерных платформ.', 'Диссертация на соискание ученой степени кандидата технических наук, 2019, – 127 с.'),
+((SELECT id FROM project_type WHERE hash = 'requirements-engineering-and-edtl'), 'Козлова, Анастасия Викторовна, рук. Гаранина Н. О.', 'Разработка парсера EDTL-требований в абстрактное синтаксическое дерево.', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2022, – 56 с.'),
+((SELECT id FROM project_type WHERE hash = 'requirements-engineering-and-edtl'), 'Гнездилова, Анна Владимировна, рук. Гаранина Н. О.', 'Разработка алгоритма преобразования EDTL-спецификаций в требования на естественном языке.', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2022, – 38 с.'),
+((SELECT id FROM project_type WHERE hash = 'requirements-engineering-and-edtl'), 'Гетманова, Анастасия Николаевна, рук. Гаранина Н. О.', 'Разработка генератора LTL-формул из списка EDTL-требований', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2022, – 37 с.'),
+((SELECT id FROM project_type WHERE hash = 'verification-and-debugging-of-process-oriented-programs'), 'Ли К. А., рук. Зюбин В. Е.', 'Разработка модуля визуализации для облачного практикума по языку poST', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2024, – 60 с.'),
+((SELECT id FROM project_type WHERE hash = 'verification-and-debugging-of-process-oriented-programs'), 'Харченко А.Д., рук. Зюбин В. Е. ', 'Разработка интерфейса пользователя в облачном практикуме по языку poST', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2024, – 60 с.'),
+((SELECT id FROM project_type WHERE hash = 'verification-and-debugging-of-process-oriented-programs'), 'Масеевский А. М., рук. Зюбин В. Е.', 'Разработка веб-технологии виртуализации ПЛК средствами Python-интерпретатора для исполнения poST-программ', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2023, – 47 с.'),
+((SELECT id FROM project_type WHERE hash = 'verification-and-debugging-of-process-oriented-programs'), 'Черненко И. М., рук. Ануреев И. С.', 'Разработка генератора условий корректности poST-программ и стратегий их доказательства в системе Isabelle/HOL', 'Выпускная квалификационная работа маристра, ФИТ НГУ, 2023, – 86 с.'),
+((SELECT id FROM project_type WHERE hash = 'verification-and-debugging-of-process-oriented-programs'), 'Родченко, Анна Сергеевна, рук. Зюбин В. Е.', 'Исследование подходов к разработке виртуальных лабораторных стендов в среде CoDeSys', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2022, – 59 с.'),
+((SELECT id FROM project_type WHERE hash = 'verification-and-debugging-of-process-oriented-programs'), 'Кондратьев, Илья Игоревич, рук. Гаранина Н. О.', 'Разработка транслятора языка poST в язык Promela для целей верификации методом проверки моделей', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2022, – 59 с.'),
+((SELECT id FROM project_type WHERE hash = 'static-analysis-of-process-oriented-specifications'), 'Мартышкин Д. П., рук. Зюбин В. Е.', 'Исследование статических методов определения алгоритмической сложности программ на языке poST.', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2024, – 86 с.'),
+((SELECT id FROM project_type WHERE hash = 'static-analysis-of-process-oriented-specifications'), 'Абраменко А. А., рук. Зюбин В. Е.', 'Разработка модуля визуализации структуры программ для webIDE языка poST.', 'Выпускная квалификационная работа магистра, ФИТ НГУ, 2023, – 39 с.'),
+((SELECT id FROM project_type WHERE hash = 'webide-and-extension-modules'), 'Кузнецов Е. В., рук. Зюбин В. Е.', 'Разработка модуля управления проектами для облачного IDE языка Reflex.', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2024, – 86 с.'),
+((SELECT id FROM project_type WHERE hash = 'webide-and-extension-modules'), 'Витченко В. А., рук. Зюбин В. Е.', 'Унифицированная архитектура модуля расширения ядра Web-IDE процесс-ориентированного языка Reflex.', 'Выпускная квалификационная работа магистра, ФИТ НГУ, 2022, – 33 с.'),
+((SELECT id FROM project_type WHERE hash = 'webide-and-extension-modules'), 'Белоглазов, Даниил Александрович, рук. Зюбин В. Е.', 'Исследование унифицированных архитектур и механизмов расширения ядра Web-IDE процесс-ориентированного языка poST.', 'Выпускная квалификационная работа бакалавра, ФИТ НГУ, 2022, – 66 с.'),
+((SELECT id FROM project_type WHERE hash = 'webide-and-extension-modules'), 'Витченко В. А., рук. Зюбин В. Е.', 'РАЗРАБОТКА WYSIWYG РЕДАКТОРА ДЛЯ МОДУЛЯ ДИНАМИЧЕСКОЙ ВЕРИФИКАЦИИ ПРОЦЕСС-ОРИЕНТИРОВАННЫХ АЛГОРИТМОВ УПРАВЛЕНИЯ', 'Выпускная квалификационная работа магистра, ФИТ НГУ, 2020, – 53 с.'),
+((SELECT id FROM project_type WHERE hash = 'scheduling-and-balancing-strategies'), 'Пермяшкин Д. А., рук. Зюбин В. Е.', 'Исследование механизмов балансировки загрузки в процесс-ориентированных языках программирования.', 'Выпускная квалификационная работа магистра, ФИТ НГУ, 2022, – 49 с.'),
+((SELECT id FROM project_type WHERE hash = 'distributed-microcontroller-systems'), 'Святкина В.А., рук. Зюбин В. Е.', 'Разработка CAN-bus протокола прикладного уровня для создания распределённых микроконтроллерных систем управления.', 'Выпускная квалификационная работа бакалавра, ФФ НГУ, 2024, – 16 с.'),
+((SELECT id FROM project_type WHERE hash = 'distributed-microcontroller-systems'), 'Набиева М.А., рук. Зюбин В. Е.', 'Разработка микроконтроллерного модуля управления тиристорами для распределенной системы управления установкой анодного оксидирования.', 'Выпускная квалификационная работа магистра, ФФ НГУ, 2024, – 56 с.');

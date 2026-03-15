@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: poprog-postgres
+    environment:
+      POSTGRES_DB: poprog_kb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d poprog_kb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:
