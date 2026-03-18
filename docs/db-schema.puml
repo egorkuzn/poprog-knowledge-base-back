@@ -1,0 +1,55 @@
+@startuml
+hide methods
+hide stereotypes
+
+skinparam backgroundColor white
+skinparam classBackgroundColor #F9FBFC
+skinparam classBorderColor #2F4858
+skinparam classArrowColor #2F4858
+skinparam shadowing false
+
+entity "publication" as publication {
+  * id : BIGSERIAL <<PK>>
+  --
+  publication_year : INTEGER
+  authors : TEXT
+  theme : TEXT
+  published : TEXT
+  link : TEXT
+}
+
+entity "project_type" as project_type {
+  * id : BIGSERIAL <<PK>>
+  --
+  title : TEXT <<UNIQUE>>
+  hash : TEXT <<UNIQUE>>
+}
+
+entity "student_work" as student_work {
+  * id : BIGSERIAL <<PK>>
+  --
+  project_type_id : BIGINT <<FK>>
+  authors : TEXT
+  theme : TEXT
+  published : TEXT
+}
+
+project_type ||--o{ student_work : "project_type_id"
+
+note right of publication
+  Публикации, сгруппированные
+  в API по году публикации.
+end note
+
+note right of project_type
+  Типы проектов для
+  студенческих работ.
+end note
+
+note right of student_work
+  Студенческие работы,
+  сгруппированные в API
+  по типу проекта.
+end note
+
+@enduml
