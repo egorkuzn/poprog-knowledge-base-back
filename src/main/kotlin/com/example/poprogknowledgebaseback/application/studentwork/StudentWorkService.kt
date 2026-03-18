@@ -1,5 +1,6 @@
 package com.example.poprogknowledgebaseback.application.studentwork
 
+import com.example.poprogknowledgebaseback.application.search.SearchUseCase
 import com.example.poprogknowledgebaseback.domain.studentwork.ProjectTypeNotFoundException
 import com.example.poprogknowledgebaseback.domain.studentwork.StudentWork
 import com.example.poprogknowledgebaseback.domain.studentwork.StudentWorkNotFoundException
@@ -11,7 +12,8 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class StudentWorkService(
-    private val studentWorkPersistencePort: StudentWorkPersistencePort
+    private val studentWorkPersistencePort: StudentWorkPersistencePort,
+    private val searchUseCase: SearchUseCase
 ) : StudentWorkUseCase {
 
     @Transactional(readOnly = true)
@@ -52,6 +54,7 @@ class StudentWorkService(
             )
         )
 
+        searchUseCase.reindex()
         return saved.toResult()
     }
 
@@ -73,6 +76,7 @@ class StudentWorkService(
             )
         )
 
+        searchUseCase.reindex()
         return updated.toResult()
     }
 
@@ -81,6 +85,7 @@ class StudentWorkService(
         val current = studentWorkPersistencePort.findById(id)
             ?: throw StudentWorkNotFoundException(id)
         studentWorkPersistencePort.deleteById(current.id ?: id)
+        searchUseCase.reindex()
     }
 
     private fun StudentWork.toResult() = StudentWorkResult(

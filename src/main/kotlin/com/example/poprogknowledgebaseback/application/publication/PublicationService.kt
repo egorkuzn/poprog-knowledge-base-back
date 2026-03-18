@@ -1,5 +1,6 @@
 package com.example.poprogknowledgebaseback.application.publication
 
+import com.example.poprogknowledgebaseback.application.search.SearchUseCase
 import com.example.poprogknowledgebaseback.domain.publication.Publication
 import com.example.poprogknowledgebaseback.domain.publication.PublicationModel
 import com.example.poprogknowledgebaseback.domain.publication.PublicationNotFoundException
@@ -10,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PublicationService(
-    private val publicationPersistencePort: PublicationPersistencePort
+    private val publicationPersistencePort: PublicationPersistencePort,
+    private val searchUseCase: SearchUseCase
 ) : PublicationUseCase {
 
     @Transactional(readOnly = true)
@@ -47,6 +49,7 @@ class PublicationService(
             )
         )
 
+        searchUseCase.reindex()
         return saved.toResult()
     }
 
@@ -65,6 +68,7 @@ class PublicationService(
             )
         )
 
+        searchUseCase.reindex()
         return updated.toResult()
     }
 
@@ -73,6 +77,7 @@ class PublicationService(
         val current = publicationPersistencePort.findById(id)
             ?: throw PublicationNotFoundException(id)
         publicationPersistencePort.deleteById(current.id ?: id)
+        searchUseCase.reindex()
     }
 
     private fun Publication.toResult() = PublicationResult(

@@ -23,6 +23,7 @@ repositories {
 dependencies {
 	testImplementation(platform("org.testcontainers:testcontainers-bom:1.20.6"))
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-liquibase")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
