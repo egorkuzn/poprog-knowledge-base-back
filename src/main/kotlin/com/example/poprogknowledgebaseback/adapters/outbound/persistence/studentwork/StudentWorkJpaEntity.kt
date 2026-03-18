@@ -28,5 +28,8 @@ class StudentWorkJpaEntity(
     var theme: String,
 
     @Column(nullable = false, columnDefinition = "text")
-    var published: String
+    var published: String,
+
+    @Column(name = "document_link", columnDefinition = "text")
+    var documentLink: String? = null
 )

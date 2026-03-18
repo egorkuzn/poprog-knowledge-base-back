@@ -41,7 +41,7 @@ class SearchService(
                 authors = studentWork.authors,
                 theme = studentWork.theme,
                 published = studentWork.published,
-                link = null
+                link = studentWork.documentLink
             )
         }
 

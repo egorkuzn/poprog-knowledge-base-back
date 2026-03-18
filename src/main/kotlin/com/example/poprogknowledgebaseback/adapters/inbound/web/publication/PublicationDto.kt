@@ -29,6 +29,18 @@ data class PublicationCreateUpdateRequest(
     val link: String = ""
 )
 
+data class PublicationUploadRequest(
+    @field:Min(1900)
+    @field:Max(2100)
+    val year: Int,
+    @field:NotBlank
+    val authors: String,
+    @field:NotBlank
+    val theme: String,
+    @field:NotBlank
+    val published: String
+)
+
 data class PublicationResponse(
     val id: Long,
     val year: Int,

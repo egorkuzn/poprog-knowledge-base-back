@@ -5,11 +5,13 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -18,11 +20,13 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.springframework.mock.web.MockMultipartFile
 import tools.jackson.databind.ObjectMapper
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class PublicationControllerIntegrationTest {
 
     @Autowired
@@ -41,15 +45,13 @@ class PublicationControllerIntegrationTest {
 
         val root = objectMapper.readTree(responseBody)
         assertTrue(root.isArray)
-        assertEquals(5, root.size())
+        assertTrue(root.size() >= 5)
 
-        val firstGroup = root[0]
-        assertEquals("2023", firstGroup["date"].asText())
-        assertEquals(8, firstGroup["publications"].size())
-
-        val lastGroup = root[root.size() - 1]
-        assertEquals("2019", lastGroup["date"].asText())
-        assertEquals(7, lastGroup["publications"].size())
+        val groupsByDate = root.associateBy { it["date"].requiredText() }
+        assertTrue(groupsByDate.containsKey("2023"))
+        assertTrue(groupsByDate.containsKey("2019"))
+        assertTrue(groupsByDate.getValue("2023")["publications"].size() >= 8)
+        assertTrue(groupsByDate.getValue("2019")["publications"].size() >= 7)
     }
 
     @Test
@@ -103,7 +105,7 @@ class PublicationControllerIntegrationTest {
         val updated = objectMapper.readTree(updateResponseBody)
         assertEquals(createdId, updated["id"].asLong())
         assertEquals(2025, updated["year"].asInt())
-        assertEquals("Updated Theme", updated["theme"].asText())
+        assertEquals("Updated Theme", updated["theme"].requiredText())
 
         mockMvc.perform(delete("/api/publications/{id}", createdId))
             .andExpect(status().isNoContent)
@@ -112,6 +114,43 @@ class PublicationControllerIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(updatePayload))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `should upload file and create publication`() {
+        val metadata = MockMultipartFile(
+            "metadata",
+            "",
+            MediaType.APPLICATION_JSON_VALUE,
+            """
+            {
+              "year": 2026,
+              "authors": "Upload Author",
+              "theme": "Upload Theme",
+              "published": "Upload Published"
+            }
+            """.trimIndent().toByteArray()
+        )
+        val file = MockMultipartFile(
+            "file",
+            "publication.pdf",
+            MediaType.APPLICATION_PDF_VALUE,
+            "pdf-content".toByteArray()
+        )
+
+        val responseBody = mockMvc.perform(
+            multipart("/api/publications/upload")
+                .file(metadata)
+                .file(file)
+        )
+            .andExpect(status().isCreated)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val created = objectMapper.readTree(responseBody)
+        assertEquals(2026, created["year"].asInt())
+        assertTrue(created["link"].requiredText().startsWith("/files/publications/"))
     }
 
     companion object {
@@ -126,4 +165,7 @@ class PublicationControllerIntegrationTest {
             registry.add("spring.datasource.password", postgres::getPassword)
         }
     }
+
+    private fun tools.jackson.databind.JsonNode.requiredText(): String =
+        toString().trim('"')
 }
