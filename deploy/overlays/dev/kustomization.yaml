@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: poprog-dev
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+configMapGenerator:
+  - name: poprog-knowledge-base-back-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=dev
+      - DB_URL=jdbc:postgresql://postgres.poprog-dev.svc.cluster.local:5432/poprog_kb
+      - ELASTICSEARCH_URIS=http://elasticsearch.poprog-dev.svc.cluster.local:9200
+
+images:
+  - name: ghcr.io/egorkuzn/poprog-knowledge-base-back
+    newTag: latest

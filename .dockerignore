@@ -1,0 +1,9 @@
+.git
+.gradle
+.idea
+.kotlin
+build
+storage
+docs
+README.md
+*.iml
