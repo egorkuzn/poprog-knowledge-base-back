@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: poprog-knowledge-base-back
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: poprog-knowledge-base-back
+  template:
+    metadata:
+      labels:
+        app: poprog-knowledge-base-back
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/egorkuzn/poprog-knowledge-base-back:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: poprog-knowledge-base-back-config
+            - secretRef:
+                name: poprog-knowledge-base-back-secret
+          volumeMounts:
+            - name: storage
+              mountPath: /app/storage
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: poprog-knowledge-base-back-storage

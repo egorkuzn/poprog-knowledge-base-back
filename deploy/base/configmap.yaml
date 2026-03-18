@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: poprog-knowledge-base-back-config
+data:
+  SPRING_PROFILES_ACTIVE: "default"
+  DB_URL: "jdbc:postgresql://postgres:5432/poprog_kb"
+  ELASTICSEARCH_URIS: "http://elasticsearch:9200"
+  SEARCH_ENABLED: "true"
+  FILES_STORAGE_DIR: "/app/storage"
+  FILES_BASE_URL: "/files"

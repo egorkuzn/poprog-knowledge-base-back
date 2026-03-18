@@ -3,6 +3,8 @@
 Backend-сервис на Kotlin + Spring Boot для базы знаний POPROG.  
 Сервис хранит публикации и студенческие работы в PostgreSQL, управляет схемой через Liquibase, предоставляет Swagger/OpenAPI и поддерживает полнотекстовый поиск через Elasticsearch.
 
+В репозитории также лежит app-specific deployment config для контейнерного запуска и Kubernetes-деплоя.
+
 ## Что умеет сервис
 
 - Хранить и отдавать публикации, сгруппированные по годам.
@@ -24,6 +26,8 @@ Backend-сервис на Kotlin + Spring Boot для базы знаний POPR
 - `Liquibase`
 - `Testcontainers`
 - `Springdoc OpenAPI`
+- `Docker`
+- `Kustomize / Kubernetes manifests`
 
 ## Запуск
 
@@ -60,6 +64,32 @@ docker compose up -d
 
 - Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 - OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+
+## Deployment
+
+Deployment-конфигурация хранится прямо в этом репозитории, в каталоге [deploy](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy).
+
+Что там есть:
+
+- [Dockerfile](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/Dockerfile) для сборки образа приложения
+- [deploy/base](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy/base) с базовыми Kubernetes manifests
+- [deploy/overlays/dev](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy/overlays/dev) с примером overlay для dev
+- [deploy/README.md](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy/README.md) с краткой инструкцией
+
+Минимальный сценарий:
+
+```bash
+docker build -t poprog-knowledge-base-back:local .
+kubectl apply -k deploy/overlays/dev
+kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
+```
+
+Важно:
+
+- манифесты предполагают, что PostgreSQL и Elasticsearch уже существуют в кластере
+- `deploy/overlays/dev` сам создаёт namespace `poprog-dev`
+- секреты intentionally не хранятся в git в “боевом” виде
+- образ в manifests нужно привязывать к реальному тегу через CI/CD или overlay
 
 ## Основные ручки
 
@@ -131,6 +161,7 @@ com.example.poprogknowledgebaseback
 - [src/main/resources/db/changelog](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/resources/db/changelog)
 - [src/test/kotlin/com/example/poprogknowledgebaseback](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/test/kotlin/com/example/poprogknowledgebaseback)
 - [docker-compose.yml](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/docker-compose.yml)
+- [deploy](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy)
 - [build.gradle.kts](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/build.gradle.kts)
 - [docs/db-schema.puml](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/docs/db-schema.puml)
 - [docs/db-schema.png](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/docs/db-schema.png)
