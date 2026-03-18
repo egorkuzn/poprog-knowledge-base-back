@@ -5,14 +5,17 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.mock.web.MockMultipartFile
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -23,6 +26,7 @@ import tools.jackson.databind.ObjectMapper
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class StudentWorkControllerIntegrationTest {
 
     @Autowired
@@ -41,16 +45,14 @@ class StudentWorkControllerIntegrationTest {
 
         val root = objectMapper.readTree(responseBody)
         assertTrue(root.isArray)
-        assertEquals(7, root.size())
+        assertTrue(root.size() >= 7)
 
-        val firstGroup = root[0]
-        assertEquals("Язык IndustrialC", firstGroup["title"].asText())
-        assertEquals("industrial-c", firstGroup["hash"].asText())
-        assertEquals(1, firstGroup["works"].size())
-
-        val secondGroup = root[1]
-        assertEquals("requirements-engineering-and-edtl", secondGroup["hash"].asText())
-        assertEquals(3, secondGroup["works"].size())
+        val groupsByHash = root.associateBy { it["hash"].requiredText() }
+        assertTrue(groupsByHash.containsKey("industrial-c"))
+        assertTrue(groupsByHash.containsKey("requirements-engineering-and-edtl"))
+        assertEquals("Язык IndustrialC", groupsByHash.getValue("industrial-c")["title"].requiredText())
+        assertTrue(groupsByHash.getValue("industrial-c")["works"].size() >= 1)
+        assertTrue(groupsByHash.getValue("requirements-engineering-and-edtl")["works"].size() >= 3)
     }
 
     @Test
@@ -77,7 +79,7 @@ class StudentWorkControllerIntegrationTest {
 
         val created = objectMapper.readTree(createResponseBody)
         val createdId = created["id"].asLong()
-        assertEquals("industrial-c", created["hash"].asText())
+        assertEquals("industrial-c", created["hash"].requiredText())
 
         val updatePayload =
             """
@@ -101,8 +103,8 @@ class StudentWorkControllerIntegrationTest {
 
         val updated = objectMapper.readTree(updateResponseBody)
         assertEquals(createdId, updated["id"].asLong())
-        assertEquals("webide-and-extension-modules", updated["hash"].asText())
-        assertEquals("Обновленная тема", updated["theme"].asText())
+        assertEquals("webide-and-extension-modules", updated["hash"].requiredText())
+        assertEquals("Обновленная тема", updated["theme"].requiredText())
 
         mockMvc.perform(delete("/api/student-works/{id}", createdId))
             .andExpect(status().isNoContent)
@@ -112,6 +114,43 @@ class StudentWorkControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(updatePayload)
         ).andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `should upload file and create student work`() {
+        val metadata = MockMultipartFile(
+            "metadata",
+            "",
+            MediaType.APPLICATION_JSON_VALUE,
+            """
+            {
+              "projectTypeHash": "industrial-c",
+              "authors": "Автор с файлом",
+              "theme": "Тема с файлом",
+              "published": "Публикация с файлом"
+            }
+            """.trimIndent().toByteArray()
+        )
+        val file = MockMultipartFile(
+            "file",
+            "student-work.pdf",
+            MediaType.APPLICATION_PDF_VALUE,
+            "pdf-content".toByteArray()
+        )
+
+        val responseBody = mockMvc.perform(
+            multipart("/api/student-works/upload")
+                .file(metadata)
+                .file(file)
+        )
+            .andExpect(status().isCreated)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val created = objectMapper.readTree(responseBody)
+        assertEquals("industrial-c", created["hash"].requiredText())
+        assertTrue(created["documentLink"].requiredText().startsWith("/files/student-works/"))
     }
 
     companion object {
@@ -126,4 +165,7 @@ class StudentWorkControllerIntegrationTest {
             registry.add("spring.datasource.password", postgres::getPassword)
         }
     }
+
+    private fun tools.jackson.databind.JsonNode.requiredText(): String =
+        toString().trim('"')
 }

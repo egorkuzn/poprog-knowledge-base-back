@@ -6,7 +6,8 @@ data class StudentWork(
     val projectTypeHash: String,
     val authors: String,
     val theme: String,
-    val published: String
+    val published: String,
+    val documentLink: String?
 )
 
 data class ProjectType(

@@ -25,11 +25,23 @@ data class StudentWorkCreateUpdateRequest(
     val published: String
 )
 
+data class StudentWorkUploadRequest(
+    @field:NotBlank
+    val projectTypeHash: String,
+    @field:NotBlank
+    val authors: String,
+    @field:NotBlank
+    val theme: String,
+    @field:NotBlank
+    val published: String
+)
+
 data class StudentWorkResponse(
     val id: Long,
     val title: String,
     val hash: String,
     val authors: String,
     val theme: String,
-    val published: String
+    val published: String,
+    val documentLink: String?
 )

@@ -4,7 +4,8 @@ data class UpsertStudentWorkCommand(
     val projectTypeHash: String,
     val authors: String,
     val theme: String,
-    val published: String
+    val published: String,
+    val documentLink: String? = null
 )
 
 data class StudentWorkResult(
@@ -13,5 +14,6 @@ data class StudentWorkResult(
     val projectTypeHash: String,
     val authors: String,
     val theme: String,
-    val published: String
+    val published: String,
+    val documentLink: String?
 )

@@ -1,5 +1,6 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.studentwork
 
+import com.example.poprogknowledgebaseback.application.files.FileStorageUseCase
 import com.example.poprogknowledgebaseback.application.studentwork.StudentWorkResult
 import com.example.poprogknowledgebaseback.application.studentwork.StudentWorkUseCase
 import com.example.poprogknowledgebaseback.application.studentwork.UpsertStudentWorkCommand
@@ -12,21 +13,25 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
 
 @RestController
 @RequestMapping("/api/student-works")
 @Tag(name = "Студенческие работы", description = "Операции для управления студенческими работами")
 class StudentWorkController(
-    private val studentWorkUseCase: StudentWorkUseCase
+    private val studentWorkUseCase: StudentWorkUseCase,
+    private val fileStorageUseCase: FileStorageUseCase
 ) {
 
     @GetMapping("/grouped")
@@ -64,6 +69,34 @@ class StudentWorkController(
     )
     fun create(@Valid @RequestBody request: StudentWorkCreateUpdateRequest): StudentWorkResponse =
         studentWorkUseCase.create(request.toCommand()).toDto()
+
+    @PostMapping(
+        "/upload",
+        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE]
+    )
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(
+        summary = "Создать студенческую работу с документом",
+        description = "Сохраняет документ в файловое хранилище, формирует публичную ссылку и затем создает запись студенческой работы."
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Студенческая работа с документом успешно создана",
+                content = [Content(schema = Schema(implementation = StudentWorkResponse::class))]
+            ),
+            ApiResponse(responseCode = "400", description = "Некорректные входные данные"),
+            ApiResponse(responseCode = "404", description = "Тип проекта не найден")
+        ]
+    )
+    fun upload(
+        @Valid @RequestPart("metadata") request: StudentWorkUploadRequest,
+        @RequestPart("file") file: MultipartFile
+    ): StudentWorkResponse {
+        val storedFile = fileStorageUseCase.store("student-works", file)
+        return studentWorkUseCase.create(request.toCommand(storedFile.url)).toDto()
+    }
 
     @PutMapping("/{id}")
     @Operation(
@@ -106,7 +139,16 @@ class StudentWorkController(
         projectTypeHash = projectTypeHash,
         authors = authors,
         theme = theme,
-        published = published
+        published = published,
+        documentLink = null
+    )
+
+    private fun StudentWorkUploadRequest.toCommand(documentLink: String) = UpsertStudentWorkCommand(
+        projectTypeHash = projectTypeHash,
+        authors = authors,
+        theme = theme,
+        published = published,
+        documentLink = documentLink
     )
 
     private fun StudentWorkResult.toDto() = StudentWorkResponse(
@@ -115,7 +157,8 @@ class StudentWorkController(
         hash = projectTypeHash,
         authors = authors,
         theme = theme,
-        published = published
+        published = published,
+        documentLink = documentLink
     )
 
     private fun WorksByProjectType.toDto() = WorksByProjectTypeDto(

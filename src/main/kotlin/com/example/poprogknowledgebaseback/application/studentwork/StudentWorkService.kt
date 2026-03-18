@@ -50,7 +50,8 @@ class StudentWorkService(
                 projectTypeHash = projectType.hash,
                 authors = command.authors,
                 theme = command.theme,
-                published = command.published
+                published = command.published,
+                documentLink = command.documentLink
             )
         )
 
@@ -72,7 +73,8 @@ class StudentWorkService(
                 projectTypeHash = projectType.hash,
                 authors = command.authors,
                 theme = command.theme,
-                published = command.published
+                published = command.published,
+                documentLink = command.documentLink ?: current.documentLink
             )
         )
 
@@ -94,6 +96,7 @@ class StudentWorkService(
         projectTypeHash = projectTypeHash,
         authors = authors,
         theme = theme,
-        published = published
+        published = published,
+        documentLink = documentLink
     )
 }

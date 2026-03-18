@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/003-create-student-work-tables.sql
   - include:
       file: db/changelog/004-seed-student-works.sql
+  - include:
+      file: db/changelog/005-add-document-link-to-student-work.sql
