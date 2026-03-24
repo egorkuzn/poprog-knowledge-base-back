@@ -1,0 +1,589 @@
+openapi: 3.1.0
+info:
+  title: POPROG Knowledge Base API
+  version: v1
+  description: API для работы с публикациями, студенческими работами, загрузкой документов и полнотекстовым поиском.
+tags:
+  - name: Публикации
+    description: Операции для управления публикациями
+  - name: Студенческие работы
+    description: Операции для управления студенческими работами
+  - name: Поиск
+    description: Полнотекстовый поиск по публикациям и студенческим работам
+paths:
+  /api/publications/grouped:
+    get:
+      tags:
+        - Публикации
+      summary: Получить публикации, сгруппированные по годам
+      description: Возвращает список публикаций в формате для фронтенда, сгруппированный по году публикации.
+      operationId: getGroupedPublications
+      responses:
+        "200":
+          description: Список публикаций успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicationsByDateDto"
+  /api/publications:
+    post:
+      tags:
+        - Публикации
+      summary: Создать публикацию
+      description: Создает новую запись публикации.
+      operationId: createPublication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicationCreateUpdateRequest"
+      responses:
+        "201":
+          description: Публикация успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicationResponse"
+        "400":
+          description: Некорректные входные данные
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/publications/upload:
+    post:
+      tags:
+        - Публикации
+      summary: Создать публикацию с документом
+      description: Сохраняет документ в файловое хранилище, формирует публичную ссылку и затем создает запись публикации.
+      operationId: uploadPublication
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PublicationUploadMultipartRequest"
+      responses:
+        "201":
+          description: Публикация с документом успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicationResponse"
+        "400":
+          description: Некорректные входные данные
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/publications/{id}:
+    put:
+      tags:
+        - Публикации
+      summary: Обновить публикацию
+      description: Обновляет существующую публикацию по её идентификатору.
+      operationId: updatePublication
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicationCreateUpdateRequest"
+      responses:
+        "200":
+          description: Публикация успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicationResponse"
+        "400":
+          description: Некорректные входные данные
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Публикация не найдена
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      tags:
+        - Публикации
+      summary: Удалить публикацию
+      description: Удаляет публикацию по её идентификатору.
+      operationId: deletePublication
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      responses:
+        "204":
+          description: Публикация успешно удалена
+        "404":
+          description: Публикация не найдена
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/student-works/grouped:
+    get:
+      tags:
+        - Студенческие работы
+      summary: Получить студенческие работы, сгруппированные по типу проекта
+      description: Возвращает список работ в формате для фронтенда, сгруппированный по типу проекта.
+      operationId: getGroupedStudentWorks
+      responses:
+        "200":
+          description: Список работ успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorksByProjectTypeDto"
+  /api/student-works:
+    post:
+      tags:
+        - Студенческие работы
+      summary: Создать студенческую работу
+      description: Создает новую запись студенческой работы и привязывает её к типу проекта по hash.
+      operationId: createStudentWork
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentWorkCreateUpdateRequest"
+      responses:
+        "201":
+          description: Работа успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentWorkResponse"
+        "400":
+          description: Некорректные входные данные
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Тип проекта не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/student-works/upload:
+    post:
+      tags:
+        - Студенческие работы
+      summary: Создать студенческую работу с документом
+      description: Сохраняет документ в файловое хранилище, формирует публичную ссылку и затем создает запись студенческой работы.
+      operationId: uploadStudentWork
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/StudentWorkUploadMultipartRequest"
+      responses:
+        "201":
+          description: Студенческая работа с документом успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentWorkResponse"
+        "400":
+          description: Некорректные входные данные
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Тип проекта не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/student-works/{id}:
+    put:
+      tags:
+        - Студенческие работы
+      summary: Обновить студенческую работу
+      description: Обновляет существующую работу по идентификатору.
+      operationId: updateStudentWork
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentWorkCreateUpdateRequest"
+      responses:
+        "200":
+          description: Работа успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentWorkResponse"
+        "400":
+          description: Некорректные входные данные
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Работа или тип проекта не найдены
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      tags:
+        - Студенческие работы
+      summary: Удалить студенческую работу
+      description: Удаляет работу по идентификатору.
+      operationId: deleteStudentWork
+      parameters:
+        - $ref: "#/components/parameters/EntityId"
+      responses:
+        "204":
+          description: Работа успешно удалена
+        "404":
+          description: Работа не найдена
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/search:
+    get:
+      tags:
+        - Поиск
+      summary: Найти материалы по текстовому запросу
+      description: Ищет по авторам, теме, описанию публикации и контексту группы. Возвращает смешанный список публикаций и студенческих работ.
+      operationId: search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Текстовый поисковый запрос
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          required: false
+          description: Максимальное количество результатов, от 1 до 100
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Результаты поиска успешно получены
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+components:
+  parameters:
+    EntityId:
+      name: id
+      in: path
+      required: true
+      description: Идентификатор сущности
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+  schemas:
+    PublicationModelDto:
+      type: object
+      required:
+        - authors
+        - theme
+        - published
+        - link
+      properties:
+        authors:
+          type: string
+        theme:
+          type: string
+        published:
+          type: string
+        link:
+          type: string
+    PublicationsByDateDto:
+      type: object
+      required:
+        - date
+        - publications
+      properties:
+        date:
+          type: string
+          description: Год публикации в виде строки
+          example: "2023"
+        publications:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicationModelDto"
+    PublicationCreateUpdateRequest:
+      type: object
+      required:
+        - year
+        - authors
+        - theme
+        - published
+      properties:
+        year:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+        authors:
+          type: string
+          minLength: 1
+        theme:
+          type: string
+          minLength: 1
+        published:
+          type: string
+          minLength: 1
+        link:
+          type: string
+          default: ""
+    PublicationUploadRequest:
+      type: object
+      required:
+        - year
+        - authors
+        - theme
+        - published
+      properties:
+        year:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+        authors:
+          type: string
+          minLength: 1
+        theme:
+          type: string
+          minLength: 1
+        published:
+          type: string
+          minLength: 1
+    PublicationUploadMultipartRequest:
+      type: object
+      required:
+        - metadata
+        - file
+      properties:
+        metadata:
+          $ref: "#/components/schemas/PublicationUploadRequest"
+        file:
+          type: string
+          format: binary
+    PublicationResponse:
+      type: object
+      required:
+        - id
+        - year
+        - authors
+        - theme
+        - published
+        - link
+      properties:
+        id:
+          type: integer
+          format: int64
+        year:
+          type: integer
+        authors:
+          type: string
+        theme:
+          type: string
+        published:
+          type: string
+        link:
+          type: string
+    WorkModelDto:
+      type: object
+      required:
+        - authors
+        - theme
+        - published
+      properties:
+        authors:
+          type: string
+        theme:
+          type: string
+        published:
+          type: string
+    WorksByProjectTypeDto:
+      type: object
+      required:
+        - title
+        - hash
+        - works
+      properties:
+        title:
+          type: string
+        hash:
+          type: string
+        works:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkModelDto"
+    StudentWorkCreateUpdateRequest:
+      type: object
+      required:
+        - projectTypeHash
+        - authors
+        - theme
+        - published
+      properties:
+        projectTypeHash:
+          type: string
+          minLength: 1
+        authors:
+          type: string
+          minLength: 1
+        theme:
+          type: string
+          minLength: 1
+        published:
+          type: string
+          minLength: 1
+    StudentWorkUploadRequest:
+      type: object
+      required:
+        - projectTypeHash
+        - authors
+        - theme
+        - published
+      properties:
+        projectTypeHash:
+          type: string
+          minLength: 1
+        authors:
+          type: string
+          minLength: 1
+        theme:
+          type: string
+          minLength: 1
+        published:
+          type: string
+          minLength: 1
+    StudentWorkUploadMultipartRequest:
+      type: object
+      required:
+        - metadata
+        - file
+      properties:
+        metadata:
+          $ref: "#/components/schemas/StudentWorkUploadRequest"
+        file:
+          type: string
+          format: binary
+    StudentWorkResponse:
+      type: object
+      required:
+        - id
+        - title
+        - hash
+        - authors
+        - theme
+        - published
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        hash:
+          type: string
+        authors:
+          type: string
+        theme:
+          type: string
+        published:
+          type: string
+        documentLink:
+          type:
+            - string
+            - "null"
+    SearchResponse:
+      type: object
+      required:
+        - query
+        - total
+        - items
+      properties:
+        query:
+          type: string
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchItemDto"
+    SearchItemDto:
+      type: object
+      required:
+        - id
+        - type
+        - sourceId
+        - groupTitle
+        - authors
+        - theme
+        - published
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: Тип найденной сущности
+          enum:
+            - publication
+            - student-work
+        sourceId:
+          type: integer
+          format: int64
+        groupTitle:
+          type: string
+        groupHash:
+          type:
+            - string
+            - "null"
+        authors:
+          type: string
+        theme:
+          type: string
+        published:
+          type: string
+        link:
+          type:
+            - string
+            - "null"
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri

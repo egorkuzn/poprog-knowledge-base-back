@@ -64,6 +64,7 @@ docker compose up -d
 
 - Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
 - OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- OpenAPI YAML-контракт в репозитории: [docs/openapi.yaml](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/docs/openapi.yaml)
 
 ## Deployment
 
@@ -161,6 +162,7 @@ com.example.poprogknowledgebaseback
 - [src/main/resources/db/changelog](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/resources/db/changelog)
 - [src/test/kotlin/com/example/poprogknowledgebaseback](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/test/kotlin/com/example/poprogknowledgebaseback)
 - [docker-compose.yml](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/docker-compose.yml)
+- [docs/openapi.yaml](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/docs/openapi.yaml)
 - [deploy](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy)
 - [build.gradle.kts](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/build.gradle.kts)
 - [docs/db-schema.puml](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/docs/db-schema.puml)
