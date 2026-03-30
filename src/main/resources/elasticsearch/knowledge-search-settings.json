@@ -1,0 +1,24 @@
+{
+  "index": {
+    "max_ngram_diff": 17
+  },
+  "analysis": {
+    "filter": {
+      "partial_ngram": {
+        "type": "ngram",
+        "min_gram": 3,
+        "max_gram": 20
+      }
+    },
+    "analyzer": {
+      "partial_index": {
+        "tokenizer": "standard",
+        "filter": ["lowercase", "partial_ngram"]
+      },
+      "partial_search": {
+        "tokenizer": "standard",
+        "filter": ["lowercase"]
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 package com.example.poprogknowledgebaseback.adapters.outbound.search.elasticsearch
 
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator
 import com.example.poprogknowledgebaseback.domain.search.SearchItem
 import com.example.poprogknowledgebaseback.domain.search.SearchSourceType
 import com.example.poprogknowledgebaseback.domain.search.port.SearchIndexPort
@@ -17,6 +18,10 @@ class ElasticsearchSearchIndexAdapter(
     private val operations: ElasticsearchOperations
 ) : SearchIndexPort {
 
+    companion object {
+        private const val MIN_PARTIAL_QUERY_LENGTH = 3
+    }
+
     override fun replaceAll(items: List<SearchItem>) {
         val indexCoordinates = IndexCoordinates.of("knowledge_search")
 
@@ -31,12 +36,43 @@ class ElasticsearchSearchIndexAdapter(
     }
 
     override fun search(query: String, limit: Int): List<SearchItem> {
+        if (query.length < MIN_PARTIAL_QUERY_LENGTH) {
+            return emptyList()
+        }
+
         val nativeQuery = NativeQuery.builder()
             .withQuery { q ->
-                q.multiMatch { multiMatch ->
-                    multiMatch
-                        .query(query)
-                        .fields("authors", "theme", "published", "groupTitle", "groupHash")
+                q.bool { bool ->
+                    bool
+                        .should { should ->
+                            should.multiMatch { multiMatch ->
+                                multiMatch
+                                    .query(query)
+                                    .operator(Operator.Or)
+                                    .fields(
+                                        "theme^4",
+                                        "authors^3",
+                                        "groupTitle^2",
+                                        "published",
+                                        "groupHash"
+                                    )
+                            }
+                        }
+                        .should { should ->
+                            should.multiMatch { multiMatch ->
+                                multiMatch
+                                    .query(query)
+                                    .operator(Operator.Or)
+                                    .fields(
+                                        "theme.partial^4",
+                                        "authors.partial^3",
+                                        "groupTitle.partial^2",
+                                        "published.partial",
+                                        "groupHash.partial"
+                                    )
+                            }
+                        }
+                        .minimumShouldMatch("1")
                 }
             }
             .withPageable(PageRequest.of(0, limit))

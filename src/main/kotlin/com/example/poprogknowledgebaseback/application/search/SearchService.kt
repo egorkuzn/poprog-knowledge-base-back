@@ -15,6 +15,10 @@ class SearchService(
     private val studentWorkPersistencePort: StudentWorkPersistencePort
 ) : SearchUseCase {
 
+    companion object {
+        private const val MIN_SEARCH_QUERY_LENGTH = 3
+    }
+
     @PostConstruct
     override fun reindex() {
         val publicationItems = publicationPersistencePort.findAllOrderByYearDescIdAsc().map { publication ->
@@ -49,7 +53,10 @@ class SearchService(
     }
 
     override fun search(query: String, limit: Int): List<SearchResult> =
-        searchIndexPort.search(query = query, limit = limit).map {
+        if (query.trim().length < MIN_SEARCH_QUERY_LENGTH) {
+            emptyList()
+        } else {
+            searchIndexPort.search(query = query.trim(), limit = limit).map {
             SearchResult(
                 id = it.id,
                 type = it.sourceType.name.lowercase(),
@@ -61,5 +68,6 @@ class SearchService(
                 published = it.published,
                 link = it.link
             )
+        }
         }
 }
