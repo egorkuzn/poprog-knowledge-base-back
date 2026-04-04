@@ -120,6 +120,74 @@ class GigaChatAiAssistantAdapterTest {
         assert(body.contains("Привет"))
     }
 
+    @Test
+    fun `should refresh token and retry when gigachat returns unauthorized`() {
+        server.enqueue(jsonResponse("""{"access_token":"expired-token","expires_at":4102444800}"""))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .setBody("""{"status":401,"message":"Token has expired"}""")
+        )
+        server.enqueue(jsonResponse("""{"access_token":"fresh-token","expires_at":4102444800}"""))
+        server.enqueue(
+            jsonResponse(
+                """
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "Свежий ответ"
+                      },
+                      "index": 0,
+                      "finish_reason": "stop"
+                    }
+                  ],
+                  "model": "GigaChat",
+                  "usage": {
+                    "prompt_tokens": 4,
+                    "completion_tokens": 2,
+                    "total_tokens": 6
+                  }
+                }
+                """.trimIndent()
+            )
+        )
+
+        val properties = gigaChatProperties()
+        val tokenProvider = createTokenProvider(properties)
+        val adapter = GigaChatAiAssistantAdapter(
+            gigaChatApiRestClient = RestClient.builder()
+                .baseUrl(server.url("/").toString().removeSuffix("/"))
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build(),
+            gigaChatTokenProvider = tokenProvider,
+            gigaChatProperties = properties
+        )
+
+        val response = adapter.complete(
+            listOf(AiChatMessage(AiChatMessageRole.USER, "Проверка"))
+        )
+
+        assertEquals("Свежий ответ", response.content)
+
+        val oauthRequest1 = server.takeRequest()
+        assertEquals("/api/v2/oauth", oauthRequest1.path)
+
+        val chatRequest1 = server.takeRequest()
+        assertEquals("/api/v1/chat/completions", chatRequest1.path)
+        assertEquals("Bearer expired-token", chatRequest1.getHeader(HttpHeaders.AUTHORIZATION))
+
+        val oauthRequest2 = server.takeRequest()
+        assertEquals("/api/v2/oauth", oauthRequest2.path)
+
+        val chatRequest2 = server.takeRequest()
+        assertEquals("/api/v1/chat/completions", chatRequest2.path)
+        assertEquals("Bearer fresh-token", chatRequest2.getHeader(HttpHeaders.AUTHORIZATION))
+    }
+
     private fun createTokenProvider(
         properties: GigaChatProperties = gigaChatProperties()
     ): GigaChatTokenProvider = GigaChatTokenProvider(
