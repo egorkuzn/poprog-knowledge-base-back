@@ -28,6 +28,7 @@ Backend-сервис на Kotlin + Spring Boot для базы знаний POPR
 - `Springdoc OpenAPI`
 - `Docker`
 - `Kustomize / Kubernetes manifests`
+- `GigaChat API`
 
 ## Запуск
 
@@ -59,6 +60,30 @@ docker compose up -d
 - `SEARCH_ENABLED=true`
 
 При необходимости их можно переопределить через переменные окружения.
+
+### Интеграция с GigaChat
+
+В проекте подготовлен backend-слой интеграции с GigaChat API для будущего чата с ИИ-агентом.
+
+Подробная инструкция по подключению:
+
+- [docs/gigachat-setup.md](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/docs/gigachat-setup.md)
+
+Переменные окружения:
+
+- `GIGACHAT_ENABLED=false`
+- `GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443`
+- `GIGACHAT_API_URL=https://gigachat.devices.sberbank.ru`
+- `GIGACHAT_AUTHORIZATION_KEY=<base64 authorization key>`
+- `GIGACHAT_SCOPE=GIGACHAT_API_PERS`
+- `GIGACHAT_MODEL=GigaChat`
+
+Что уже реализовано:
+
+- получение OAuth-токена GigaChat
+- кэширование токена до истечения срока действия
+- отправка chat completion-запросов в GigaChat
+- application service для будущего использования из chat endpoint
 
 ### 3. Проверить Swagger
 
@@ -116,6 +141,15 @@ kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 В ответе есть тип источника, идентификатор сущности, контекст группы и данные для отображения карточки результата.
 Поиск начинает работать от 3 символов и поддерживает частичные совпадения внутри индексируемых полей.
 
+### ИИ-ассистент
+
+- `POST /api/assistant/chat`
+- `GET /api/assistant/chats/{chatId}/messages`
+
+`POST /api/assistant/chat` принимает новые сообщения для диалога. Если `chatId` не передан, backend создаёт новый диалог. Если `chatId` передан, backend подмешивает сохранённую историю, отправляет запрос в GigaChat и сохраняет новые сообщения вместе с ответом ассистента.
+
+`GET /api/assistant/chats/{chatId}/messages` возвращает сохранённую историю сообщений в хронологическом порядке.
+
 ## Тесты
 
 Запуск тестов:
@@ -150,12 +184,17 @@ com.example.poprogknowledgebaseback
     - [inbound/web/publication](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/inbound/web/publication)
     - [inbound/web/studentwork](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/inbound/web/studentwork)
     - [inbound/web/search](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/inbound/web/search)
+    - [inbound/web/assistant](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/inbound/web/assistant)
     - [outbound/persistence/publication](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/persistence/publication)
     - [outbound/persistence/studentwork](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/persistence/studentwork)
+    - [outbound/persistence/assistant](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/persistence/assistant)
     - [outbound/search/elasticsearch](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/search/elasticsearch)
+    - [outbound/assistant/gigachat](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/assistant/gigachat)
+  - [application/assistant](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/assistant)
   - [application/publication](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/publication)
   - [application/studentwork](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/studentwork)
   - [application/search](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/search)
+  - [domain/assistant](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/assistant)
   - [domain/publication](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/publication)
   - [domain/studentwork](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/studentwork)
   - [domain/search](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/search)

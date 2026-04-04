@@ -22,6 +22,12 @@ bin/
 # Logs
 *.log
 
+# Local environment
+.env
+.env.*
+!.env.example
+.local/
+
 # OS files
 .DS_Store
 Thumbs.db
