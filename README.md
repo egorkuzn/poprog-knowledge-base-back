@@ -150,6 +150,24 @@ kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 
 `GET /api/assistant/chats/{chatId}/messages` возвращает сохранённую историю сообщений в хронологическом порядке.
 
+### Меню проектов
+
+- `GET /api/projects/menu`
+- `POST /api/projects/menu/sections`
+- `PUT /api/projects/menu/sections/{id}`
+- `DELETE /api/projects/menu/sections/{id}`
+- `POST /api/projects/menu/items`
+- `PUT /api/projects/menu/items/{id}`
+- `DELETE /api/projects/menu/items/{id}`
+- `POST /api/projects/menu/promos`
+- `PUT /api/projects/menu/promos/{id}`
+- `DELETE /api/projects/menu/promos/{id}`
+- `POST /api/projects/menu/resources/upload`
+
+`GET /api/projects/menu` возвращает полную структуру hover-меню раздела "Проекты": секции, CTA, карточки направлений и промо-блоки.
+
+CRUD-ручки позволяют менять метаданные меню через backend, а `POST /api/projects/menu/resources/upload` сохраняет изображение или другой ресурс и возвращает публичный URL, который можно подставить в item или promo.
+
 ## Тесты
 
 Запуск тестов:
@@ -185,16 +203,20 @@ com.example.poprogknowledgebaseback
     - [inbound/web/studentwork](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/inbound/web/studentwork)
     - [inbound/web/search](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/inbound/web/search)
     - [inbound/web/assistant](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/inbound/web/assistant)
+    - [inbound/web/projectmenu](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/inbound/web/projectmenu)
     - [outbound/persistence/publication](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/persistence/publication)
     - [outbound/persistence/studentwork](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/persistence/studentwork)
     - [outbound/persistence/assistant](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/persistence/assistant)
+    - [outbound/persistence/projectmenu](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/persistence/projectmenu)
     - [outbound/search/elasticsearch](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/search/elasticsearch)
     - [outbound/assistant/gigachat](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/adapters/outbound/assistant/gigachat)
   - [application/assistant](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/assistant)
+  - [application/projectmenu](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/projectmenu)
   - [application/publication](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/publication)
   - [application/studentwork](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/studentwork)
   - [application/search](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/application/search)
   - [domain/assistant](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/assistant)
+  - [domain/projectmenu](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/projectmenu)
   - [domain/publication](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/publication)
   - [domain/studentwork](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/studentwork)
   - [domain/search](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/src/main/kotlin/com/example/poprogknowledgebaseback/domain/search)
