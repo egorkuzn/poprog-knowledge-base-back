@@ -7,6 +7,7 @@ import com.example.poprogknowledgebaseback.domain.assistant.AiChatMessage
 import com.example.poprogknowledgebaseback.domain.assistant.port.AiAssistantPort
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 
 @Component
@@ -20,7 +21,28 @@ class GigaChatAiAssistantAdapter(
     override fun complete(messages: List<AiChatMessage>): AiAssistantResponse {
         require(messages.isNotEmpty()) { "At least one chat message is required" }
 
-        val response = gigaChatApiRestClient.post()
+        val response = try {
+            requestCompletion(messages)
+        } catch (ex: HttpClientErrorException.Unauthorized) {
+            gigaChatTokenProvider.invalidateAccessToken()
+            requestCompletion(messages)
+        }
+
+        val firstChoice = response.choices.firstOrNull()
+            ?: error("GigaChat returned no choices")
+
+        return AiAssistantResponse(
+            content = firstChoice.message.content,
+            model = response.model,
+            finishReason = firstChoice.finishReason,
+            promptTokens = response.usage?.promptTokens,
+            completionTokens = response.usage?.completionTokens,
+            totalTokens = response.usage?.totalTokens
+        )
+    }
+
+    private fun requestCompletion(messages: List<AiChatMessage>): GigaChatChatCompletionResponse =
+        gigaChatApiRestClient.post()
             .uri("/api/v1/chat/completions")
             .headers { headers ->
                 headers.setBearerAuth(gigaChatTokenProvider.getAccessToken())
@@ -35,19 +57,6 @@ class GigaChatAiAssistantAdapter(
             .retrieve()
             .body(GigaChatChatCompletionResponse::class.java)
             ?: error("GigaChat returned an empty chat completion response")
-
-        val firstChoice = response.choices.firstOrNull()
-            ?: error("GigaChat returned no choices")
-
-        return AiAssistantResponse(
-            content = firstChoice.message.content,
-            model = response.model,
-            finishReason = firstChoice.finishReason,
-            promptTokens = response.usage?.promptTokens,
-            completionTokens = response.usage?.completionTokens,
-            totalTokens = response.usage?.totalTokens
-        )
-    }
 
     private fun AiChatMessage.toPayload() = GigaChatChatMessagePayload(
         role = role.name.lowercase(),

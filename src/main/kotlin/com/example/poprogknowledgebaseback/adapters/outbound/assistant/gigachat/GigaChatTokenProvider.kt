@@ -39,6 +39,12 @@ class GigaChatTokenProvider(
         }
     }
 
+    fun invalidateAccessToken() {
+        synchronized(this) {
+            cachedToken = null
+        }
+    }
+
     private fun requestToken(): CachedToken {
         require(gigaChatProperties.authorizationKey.isNotBlank()) {
             "GigaChat authorization key is not configured"
