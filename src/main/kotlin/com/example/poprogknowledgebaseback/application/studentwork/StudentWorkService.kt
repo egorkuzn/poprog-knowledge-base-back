@@ -1,5 +1,6 @@
 package com.example.poprogknowledgebaseback.application.studentwork
 
+import com.example.poprogknowledgebaseback.application.search.PdfIndexingService
 import com.example.poprogknowledgebaseback.application.search.SearchUseCase
 import com.example.poprogknowledgebaseback.domain.studentwork.ProjectTypeNotFoundException
 import com.example.poprogknowledgebaseback.domain.studentwork.StudentWork
@@ -13,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class StudentWorkService(
     private val studentWorkPersistencePort: StudentWorkPersistencePort,
-    private val searchUseCase: SearchUseCase
+    private val searchUseCase: SearchUseCase,
+    private val pdfIndexingService: PdfIndexingService
 ) : StudentWorkUseCase {
 
     @Transactional(readOnly = true)
@@ -51,11 +53,13 @@ class StudentWorkService(
                 authors = command.authors,
                 theme = command.theme,
                 published = command.published,
-                documentLink = command.documentLink
+                documentLink = command.documentLink,
+                pdfText = null
             )
         )
 
-        searchUseCase.reindex()
+        searchUseCase.indexStudentWork(saved)
+        pdfIndexingService.indexStudentWorkPdf(saved)
         return saved.toResult()
     }
 
@@ -74,11 +78,13 @@ class StudentWorkService(
                 authors = command.authors,
                 theme = command.theme,
                 published = command.published,
-                documentLink = command.documentLink ?: current.documentLink
+                documentLink = command.documentLink ?: current.documentLink,
+                pdfText = if (command.documentLink != null && command.documentLink != current.documentLink) null else current.pdfText
             )
         )
 
-        searchUseCase.reindex()
+        searchUseCase.indexStudentWork(updated)
+        pdfIndexingService.indexStudentWorkPdf(updated)
         return updated.toResult()
     }
 
@@ -87,7 +93,7 @@ class StudentWorkService(
         val current = studentWorkPersistencePort.findById(id)
             ?: throw StudentWorkNotFoundException(id)
         studentWorkPersistencePort.deleteById(current.id ?: id)
-        searchUseCase.reindex()
+        searchUseCase.removeStudentWork(current.id ?: id)
     }
 
     private fun StudentWork.toResult() = StudentWorkResult(

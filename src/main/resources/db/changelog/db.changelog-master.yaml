@@ -15,3 +15,5 @@ databaseChangeLog:
       file: db/changelog/007-create-project-menu-tables.sql
   - include:
       file: db/changelog/008-seed-project-menu.sql
+  - include:
+      file: db/changelog/009-add-pdf-text-columns.sql

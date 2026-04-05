@@ -78,6 +78,18 @@ data class SearchDocument(
         ]
     )
     val published: String,
+    @MultiField(
+        mainField = Field(type = FieldType.Text),
+        otherFields = [
+            InnerField(
+                suffix = "partial",
+                type = FieldType.Text,
+                analyzer = "partial_index",
+                searchAnalyzer = "partial_search"
+            )
+        ]
+    )
+    val pdfText: String? = null,
     @Field(type = FieldType.Keyword)
     val link: String? = null
 )

@@ -27,5 +27,8 @@ class PublicationJpaEntity(
     var published: String,
 
     @Column(nullable = false, columnDefinition = "text")
-    var link: String
+    var link: String,
+
+    @Column(name = "pdf_text", columnDefinition = "text")
+    var pdfText: String? = null
 )

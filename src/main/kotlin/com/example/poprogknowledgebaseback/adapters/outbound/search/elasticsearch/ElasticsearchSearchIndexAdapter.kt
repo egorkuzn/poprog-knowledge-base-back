@@ -35,6 +35,17 @@ class ElasticsearchSearchIndexAdapter(
         repository.saveAll(items.map { it.toDocument() })
     }
 
+    override fun index(item: SearchItem) {
+        ensureIndex()
+        repository.save(item.toDocument())
+    }
+
+    override fun delete(id: String) {
+        if (operations.indexOps(IndexCoordinates.of("knowledge_search")).exists()) {
+            repository.deleteById(id)
+        }
+    }
+
     override fun search(query: String, limit: Int): List<SearchItem> {
         if (query.length < MIN_PARTIAL_QUERY_LENGTH) {
             return emptyList()
@@ -53,6 +64,7 @@ class ElasticsearchSearchIndexAdapter(
                                         "theme^4",
                                         "authors^3",
                                         "groupTitle^2",
+                                        "pdfText^2",
                                         "published",
                                         "groupHash"
                                     )
@@ -67,6 +79,7 @@ class ElasticsearchSearchIndexAdapter(
                                         "theme.partial^4",
                                         "authors.partial^3",
                                         "groupTitle.partial^2",
+                                        "pdfText.partial^2",
                                         "published.partial",
                                         "groupHash.partial"
                                     )
@@ -83,6 +96,14 @@ class ElasticsearchSearchIndexAdapter(
             .map { it.content.toDomain() }
     }
 
+    private fun ensureIndex() {
+        val indexOps = operations.indexOps(IndexCoordinates.of("knowledge_search"))
+        if (!indexOps.exists()) {
+            operations.indexOps(SearchDocument::class.java).create()
+            operations.indexOps(SearchDocument::class.java).putMapping()
+        }
+    }
+
     private fun SearchItem.toDocument() = SearchDocument(
         id = id,
         sourceType = sourceType.name,
@@ -92,6 +113,7 @@ class ElasticsearchSearchIndexAdapter(
         authors = authors,
         theme = theme,
         published = published,
+        pdfText = pdfText,
         link = link
     )
 
@@ -104,6 +126,7 @@ class ElasticsearchSearchIndexAdapter(
         authors = authors,
         theme = theme,
         published = published,
+        pdfText = pdfText,
         link = link
     )
 }

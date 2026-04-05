@@ -27,7 +27,8 @@ class StudentWorkPersistenceAdapter(
             authors = studentWork.authors,
             theme = studentWork.theme,
             published = studentWork.published,
-            documentLink = studentWork.documentLink
+            documentLink = studentWork.documentLink,
+            pdfText = studentWork.pdfText
         )
 
         return studentWorkRepository.save(entity).let {
@@ -38,7 +39,8 @@ class StudentWorkPersistenceAdapter(
                 authors = it.authors,
                 theme = it.theme,
                 published = it.published,
-                documentLink = it.documentLink
+                documentLink = it.documentLink,
+                pdfText = it.pdfText
             )
         }
     }
@@ -57,6 +59,7 @@ class StudentWorkPersistenceAdapter(
         authors = authors,
         theme = theme,
         published = published,
-        documentLink = documentLink
+        documentLink = documentLink,
+        pdfText = pdfText
     )
 }
