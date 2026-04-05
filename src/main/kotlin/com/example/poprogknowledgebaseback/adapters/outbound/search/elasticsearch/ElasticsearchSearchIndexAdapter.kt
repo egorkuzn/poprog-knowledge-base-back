@@ -53,6 +53,7 @@ class ElasticsearchSearchIndexAdapter(
                                         "theme^4",
                                         "authors^3",
                                         "groupTitle^2",
+                                        "pdfText^2",
                                         "published",
                                         "groupHash"
                                     )
@@ -67,6 +68,7 @@ class ElasticsearchSearchIndexAdapter(
                                         "theme.partial^4",
                                         "authors.partial^3",
                                         "groupTitle.partial^2",
+                                        "pdfText.partial^2",
                                         "published.partial",
                                         "groupHash.partial"
                                     )
@@ -92,6 +94,7 @@ class ElasticsearchSearchIndexAdapter(
         authors = authors,
         theme = theme,
         published = published,
+        pdfText = pdfText,
         link = link
     )
 
@@ -104,6 +107,7 @@ class ElasticsearchSearchIndexAdapter(
         authors = authors,
         theme = theme,
         published = published,
+        pdfText = pdfText,
         link = link
     )
 }

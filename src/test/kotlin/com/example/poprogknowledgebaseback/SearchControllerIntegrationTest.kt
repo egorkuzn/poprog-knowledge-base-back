@@ -2,6 +2,11 @@ package com.example.poprogknowledgebaseback
 
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import com.example.poprogknowledgebaseback.application.search.SearchUseCase
+import com.example.poprogknowledgebaseback.domain.publication.Publication
+import com.example.poprogknowledgebaseback.domain.publication.port.PublicationPersistencePort
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -17,6 +22,10 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import tools.jackson.databind.ObjectMapper
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.PDPageContentStream
+import org.apache.pdfbox.pdmodel.font.PDType1Font
 
 @SpringBootTest(
     properties = [
@@ -33,6 +42,12 @@ class SearchControllerIntegrationTest {
 
     @Autowired
     private lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    private lateinit var publicationPersistencePort: PublicationPersistencePort
+
+    @Autowired
+    private lateinit var searchUseCase: SearchUseCase
 
     @Test
     fun `should return empty results for queries shorter than three characters`() {
@@ -94,6 +109,40 @@ class SearchControllerIntegrationTest {
         )
     }
 
+    @Test
+    fun `should search by text inside pdf documents`() {
+        val keyword = "pdfkeywordunique"
+        val pdfPath = createPdfWithText(keyword)
+
+        publicationPersistencePort.save(
+            Publication(
+                id = null,
+                year = 2026,
+                authors = "PDF Author",
+                theme = "PDF Theme",
+                published = "PDF Published",
+                link = "/files/publications/${pdfPath.fileName}"
+            )
+        )
+
+        searchUseCase.reindex()
+
+        val responseBody = mockMvc.perform(get("/api/search").param("q", keyword).param("limit", "10"))
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val root = objectMapper.readTree(responseBody)
+        assertEquals(keyword, root["query"].requiredText())
+        assertTrue(root["total"].asInt() > 0)
+        assertTrue(
+            root["items"].any {
+                it["authors"].requiredText() == "PDF Author"
+            }
+        )
+    }
+
     companion object {
         @Container
         private val postgres = PostgreSQLContainer("postgres:18")
@@ -120,4 +169,25 @@ class SearchControllerIntegrationTest {
 
     private fun tools.jackson.databind.JsonNode.requiredText(): String =
         toString().trim('"')
+
+    private fun createPdfWithText(text: String): Path {
+        val storageRoot = Path.of("build/test-uploads/publications").toAbsolutePath().normalize()
+        Files.createDirectories(storageRoot)
+        val pdfPath = storageRoot.resolve("search-$text.pdf")
+
+        PDDocument().use { document ->
+            val page = PDPage()
+            document.addPage(page)
+            PDPageContentStream(document, page).use { content ->
+                content.beginText()
+                content.setFont(PDType1Font.HELVETICA, 12f)
+                content.newLineAtOffset(50f, 700f)
+                content.showText(text)
+                content.endText()
+            }
+            document.save(pdfPath.toFile())
+        }
+
+        return pdfPath
+    }
 }

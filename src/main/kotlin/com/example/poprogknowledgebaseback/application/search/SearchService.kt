@@ -5,6 +5,8 @@ import com.example.poprogknowledgebaseback.domain.search.SearchItem
 import com.example.poprogknowledgebaseback.domain.search.SearchSourceType
 import com.example.poprogknowledgebaseback.domain.search.port.SearchIndexPort
 import com.example.poprogknowledgebaseback.domain.studentwork.port.StudentWorkPersistencePort
+import com.example.poprogknowledgebaseback.application.files.FileStoragePathResolver
+import com.example.poprogknowledgebaseback.application.files.PdfTextExtractor
 import jakarta.annotation.PostConstruct
 import org.springframework.stereotype.Service
 
@@ -12,7 +14,9 @@ import org.springframework.stereotype.Service
 class SearchService(
     private val searchIndexPort: SearchIndexPort,
     private val publicationPersistencePort: PublicationPersistencePort,
-    private val studentWorkPersistencePort: StudentWorkPersistencePort
+    private val studentWorkPersistencePort: StudentWorkPersistencePort,
+    private val fileStoragePathResolver: FileStoragePathResolver,
+    private val pdfTextExtractor: PdfTextExtractor
 ) : SearchUseCase {
 
     companion object {
@@ -31,7 +35,8 @@ class SearchService(
                 authors = publication.authors,
                 theme = publication.theme,
                 published = publication.published,
-                link = publication.link.ifBlank { null }
+                link = publication.link.ifBlank { null },
+                pdfText = extractPdfText(publication.link)
             )
         }
 
@@ -45,7 +50,8 @@ class SearchService(
                 authors = studentWork.authors,
                 theme = studentWork.theme,
                 published = studentWork.published,
-                link = studentWork.documentLink
+                link = studentWork.documentLink,
+                pdfText = extractPdfText(studentWork.documentLink)
             )
         }
 
@@ -70,4 +76,14 @@ class SearchService(
             )
         }
         }
+
+    private fun extractPdfText(link: String?): String? {
+        val normalizedLink = link?.trim().orEmpty()
+        if (normalizedLink.isBlank() || !normalizedLink.lowercase().endsWith(".pdf")) {
+            return null
+        }
+
+        val localPath = fileStoragePathResolver.resolveLocalPath(normalizedLink) ?: return null
+        return pdfTextExtractor.extractText(localPath)
+    }
 }

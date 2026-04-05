@@ -9,7 +9,8 @@ data class SearchItem(
     val authors: String,
     val theme: String,
     val published: String,
-    val link: String?
+    val link: String?,
+    val pdfText: String? = null
 )
 
 enum class SearchSourceType {
