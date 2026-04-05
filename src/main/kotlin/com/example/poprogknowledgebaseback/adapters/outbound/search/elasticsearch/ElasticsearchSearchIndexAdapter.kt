@@ -35,6 +35,17 @@ class ElasticsearchSearchIndexAdapter(
         repository.saveAll(items.map { it.toDocument() })
     }
 
+    override fun index(item: SearchItem) {
+        ensureIndex()
+        repository.save(item.toDocument())
+    }
+
+    override fun delete(id: String) {
+        if (operations.indexOps(IndexCoordinates.of("knowledge_search")).exists()) {
+            repository.deleteById(id)
+        }
+    }
+
     override fun search(query: String, limit: Int): List<SearchItem> {
         if (query.length < MIN_PARTIAL_QUERY_LENGTH) {
             return emptyList()
@@ -83,6 +94,14 @@ class ElasticsearchSearchIndexAdapter(
         return operations.search(nativeQuery, SearchDocument::class.java)
             .searchHits
             .map { it.content.toDomain() }
+    }
+
+    private fun ensureIndex() {
+        val indexOps = operations.indexOps(IndexCoordinates.of("knowledge_search"))
+        if (!indexOps.exists()) {
+            operations.indexOps(SearchDocument::class.java).create()
+            operations.indexOps(SearchDocument::class.java).putMapping()
+        }
     }
 
     private fun SearchItem.toDocument() = SearchDocument(

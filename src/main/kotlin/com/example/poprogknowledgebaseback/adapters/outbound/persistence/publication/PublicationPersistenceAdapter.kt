@@ -27,7 +27,8 @@ class PublicationPersistenceAdapter(
         authors = authors,
         theme = theme,
         published = published,
-        link = link
+        link = link,
+        pdfText = pdfText
     )
 
     private fun Publication.toEntity() = PublicationJpaEntity(
@@ -36,6 +37,7 @@ class PublicationPersistenceAdapter(
         authors = authors,
         theme = theme,
         published = published,
-        link = link
+        link = link,
+        pdfText = pdfText
     )
 }

@@ -31,5 +31,8 @@ class StudentWorkJpaEntity(
     var published: String,
 
     @Column(name = "document_link", columnDefinition = "text")
-    var documentLink: String? = null
+    var documentLink: String? = null,
+
+    @Column(name = "pdf_text", columnDefinition = "text")
+    var pdfText: String? = null
 )

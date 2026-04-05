@@ -1,6 +1,7 @@
 package com.example.poprogknowledgebaseback.application.publication
 
 import com.example.poprogknowledgebaseback.application.search.SearchUseCase
+import com.example.poprogknowledgebaseback.application.search.PdfIndexingService
 import com.example.poprogknowledgebaseback.domain.publication.Publication
 import com.example.poprogknowledgebaseback.domain.publication.PublicationModel
 import com.example.poprogknowledgebaseback.domain.publication.PublicationNotFoundException
@@ -12,7 +13,8 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class PublicationService(
     private val publicationPersistencePort: PublicationPersistencePort,
-    private val searchUseCase: SearchUseCase
+    private val searchUseCase: SearchUseCase,
+    private val pdfIndexingService: PdfIndexingService
 ) : PublicationUseCase {
 
     @Transactional(readOnly = true)
@@ -45,11 +47,13 @@ class PublicationService(
                 authors = command.authors,
                 theme = command.theme,
                 published = command.published,
-                link = command.link
+                link = command.link,
+                pdfText = null
             )
         )
 
-        searchUseCase.reindex()
+        searchUseCase.indexPublication(saved)
+        pdfIndexingService.indexPublicationPdf(saved)
         return saved.toResult()
     }
 
@@ -64,11 +68,13 @@ class PublicationService(
                 authors = command.authors,
                 theme = command.theme,
                 published = command.published,
-                link = command.link
+                link = command.link,
+                pdfText = if (command.link != current.link) null else current.pdfText
             )
         )
 
-        searchUseCase.reindex()
+        searchUseCase.indexPublication(updated)
+        pdfIndexingService.indexPublicationPdf(updated)
         return updated.toResult()
     }
 
@@ -77,7 +83,7 @@ class PublicationService(
         val current = publicationPersistencePort.findById(id)
             ?: throw PublicationNotFoundException(id)
         publicationPersistencePort.deleteById(current.id ?: id)
-        searchUseCase.reindex()
+        searchUseCase.removePublication(current.id ?: id)
     }
 
     private fun Publication.toResult() = PublicationResult(

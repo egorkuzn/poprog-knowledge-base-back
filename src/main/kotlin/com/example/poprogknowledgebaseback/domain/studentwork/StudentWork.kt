@@ -7,7 +7,8 @@ data class StudentWork(
     val authors: String,
     val theme: String,
     val published: String,
-    val documentLink: String?
+    val documentLink: String?,
+    val pdfText: String? = null
 )
 
 data class ProjectType(

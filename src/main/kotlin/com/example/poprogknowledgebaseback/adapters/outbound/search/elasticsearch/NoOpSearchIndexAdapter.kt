@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component
 @ConditionalOnProperty(name = ["app.search.enabled"], havingValue = "false")
 class NoOpSearchIndexAdapter : SearchIndexPort {
     override fun replaceAll(items: List<SearchItem>) = Unit
+    override fun index(item: SearchItem) = Unit
+    override fun delete(id: String) = Unit
 
     override fun search(query: String, limit: Int): List<SearchItem> = emptyList()
 }
