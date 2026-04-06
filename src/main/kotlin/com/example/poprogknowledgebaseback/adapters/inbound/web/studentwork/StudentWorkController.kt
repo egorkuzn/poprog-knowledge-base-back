@@ -53,7 +53,7 @@ class StudentWorkController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-        summary = "Создать студенческую работу",
+        summary = "[ADMIN] Создать студенческую работу",
         description = "Создает новую запись студенческой работы и привязывает её к типу проекта по hash."
     )
     @ApiResponses(
@@ -76,7 +76,7 @@ class StudentWorkController(
     )
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-        summary = "Создать студенческую работу с документом",
+        summary = "[ADMIN] Создать студенческую работу с документом",
         description = "Сохраняет документ в файловое хранилище, формирует публичную ссылку и затем создает запись студенческой работы."
     )
     @ApiResponses(
@@ -100,7 +100,7 @@ class StudentWorkController(
 
     @PutMapping("/{id}")
     @Operation(
-        summary = "Обновить студенческую работу",
+        summary = "[ADMIN] Обновить студенческую работу",
         description = "Обновляет существующую работу по идентификатору."
     )
     @ApiResponses(
@@ -122,7 +122,7 @@ class StudentWorkController(
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
-        summary = "Удалить студенческую работу",
+        summary = "[ADMIN] Удалить студенческую работу",
         description = "Удаляет работу по идентификатору."
     )
     @ApiResponses(
