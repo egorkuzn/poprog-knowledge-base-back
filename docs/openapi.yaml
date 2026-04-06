@@ -33,7 +33,7 @@ paths:
     post:
       tags:
         - Меню проектов
-      summary: Создать секцию меню проектов
+      summary: "[ADMIN] Создать секцию меню проектов"
       operationId: createProjectMenuSection
       requestBody:
         required: true
@@ -56,7 +56,7 @@ paths:
     put:
       tags:
         - Меню проектов
-      summary: Обновить секцию меню проектов
+      summary: "[ADMIN] Обновить секцию меню проектов"
       operationId: updateProjectMenuSection
       parameters:
         - $ref: "#/components/parameters/EntityId"
@@ -80,7 +80,7 @@ paths:
     delete:
       tags:
         - Меню проектов
-      summary: Удалить секцию меню проектов
+      summary: "[ADMIN] Удалить секцию меню проектов"
       operationId: deleteProjectMenuSection
       parameters:
         - $ref: "#/components/parameters/EntityId"
@@ -93,7 +93,7 @@ paths:
     post:
       tags:
         - Меню проектов
-      summary: Создать карточку меню проектов
+      summary: "[ADMIN] Создать карточку меню проектов"
       operationId: createProjectMenuItem
       requestBody:
         required: true
@@ -114,7 +114,7 @@ paths:
     put:
       tags:
         - Меню проектов
-      summary: Обновить карточку меню проектов
+      summary: "[ADMIN] Обновить карточку меню проектов"
       operationId: updateProjectMenuItem
       parameters:
         - $ref: "#/components/parameters/EntityId"
@@ -136,7 +136,7 @@ paths:
     delete:
       tags:
         - Меню проектов
-      summary: Удалить карточку меню проектов
+      summary: "[ADMIN] Удалить карточку меню проектов"
       operationId: deleteProjectMenuItem
       parameters:
         - $ref: "#/components/parameters/EntityId"
@@ -149,7 +149,7 @@ paths:
     post:
       tags:
         - Меню проектов
-      summary: Создать промо-блок меню проектов
+      summary: "[ADMIN] Создать промо-блок меню проектов"
       operationId: createProjectMenuPromo
       requestBody:
         required: true
@@ -170,7 +170,7 @@ paths:
     put:
       tags:
         - Меню проектов
-      summary: Обновить промо-блок меню проектов
+      summary: "[ADMIN] Обновить промо-блок меню проектов"
       operationId: updateProjectMenuPromo
       parameters:
         - $ref: "#/components/parameters/EntityId"
@@ -192,7 +192,7 @@ paths:
     delete:
       tags:
         - Меню проектов
-      summary: Удалить промо-блок меню проектов
+      summary: "[ADMIN] Удалить промо-блок меню проектов"
       operationId: deleteProjectMenuPromo
       parameters:
         - $ref: "#/components/parameters/EntityId"
@@ -205,7 +205,7 @@ paths:
     post:
       tags:
         - Меню проектов
-      summary: Загрузить ресурс для меню проектов
+      summary: "[ADMIN] Загрузить ресурс для меню проектов"
       operationId: uploadProjectMenuResource
       requestBody:
         required: true
@@ -312,7 +312,7 @@ paths:
     post:
       tags:
         - Публикации
-      summary: Создать публикацию
+      summary: "[ADMIN] Создать публикацию"
       description: Создает новую запись публикации.
       operationId: createPublication
       requestBody:
@@ -338,7 +338,7 @@ paths:
     post:
       tags:
         - Публикации
-      summary: Создать публикацию с документом
+      summary: "[ADMIN] Создать публикацию с документом"
       description: Сохраняет документ в файловое хранилище, формирует публичную ссылку и затем создает запись публикации.
       operationId: uploadPublication
       requestBody:
@@ -364,7 +364,7 @@ paths:
     put:
       tags:
         - Публикации
-      summary: Обновить публикацию
+      summary: "[ADMIN] Обновить публикацию"
       description: Обновляет существующую публикацию по её идентификатору.
       operationId: updatePublication
       parameters:
@@ -397,7 +397,7 @@ paths:
     delete:
       tags:
         - Публикации
-      summary: Удалить публикацию
+      summary: "[ADMIN] Удалить публикацию"
       description: Удаляет публикацию по её идентификатору.
       operationId: deletePublication
       parameters:
@@ -431,7 +431,7 @@ paths:
     post:
       tags:
         - Студенческие работы
-      summary: Создать студенческую работу
+      summary: "[ADMIN] Создать студенческую работу"
       description: Создает новую запись студенческой работы и привязывает её к типу проекта по hash.
       operationId: createStudentWork
       requestBody:
@@ -463,7 +463,7 @@ paths:
     post:
       tags:
         - Студенческие работы
-      summary: Создать студенческую работу с документом
+      summary: "[ADMIN] Создать студенческую работу с документом"
       description: Сохраняет документ в файловое хранилище, формирует публичную ссылку и затем создает запись студенческой работы.
       operationId: uploadStudentWork
       requestBody:
@@ -495,7 +495,7 @@ paths:
     put:
       tags:
         - Студенческие работы
-      summary: Обновить студенческую работу
+      summary: "[ADMIN] Обновить студенческую работу"
       description: Обновляет существующую работу по идентификатору.
       operationId: updateStudentWork
       parameters:
@@ -528,7 +528,7 @@ paths:
     delete:
       tags:
         - Студенческие работы
-      summary: Удалить студенческую работу
+      summary: "[ADMIN] Удалить студенческую работу"
       description: Удаляет работу по идентификатору.
       operationId: deleteStudentWork
       parameters:

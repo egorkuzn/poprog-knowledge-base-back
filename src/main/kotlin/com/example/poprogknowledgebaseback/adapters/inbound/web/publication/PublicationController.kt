@@ -53,7 +53,7 @@ class PublicationController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-        summary = "Создать публикацию",
+        summary = "[ADMIN] Создать публикацию",
         description = "Создает новую запись публикации."
     )
     @ApiResponses(
@@ -75,7 +75,7 @@ class PublicationController(
     )
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-        summary = "Создать публикацию с документом",
+        summary = "[ADMIN] Создать публикацию с документом",
         description = "Сохраняет документ в файловое хранилище, формирует публичную ссылку и затем создает запись публикации."
     )
     @ApiResponses(
@@ -98,7 +98,7 @@ class PublicationController(
 
     @PutMapping("/{id}")
     @Operation(
-        summary = "Обновить публикацию",
+        summary = "[ADMIN] Обновить публикацию",
         description = "Обновляет существующую публикацию по её идентификатору."
     )
     @ApiResponses(
@@ -120,7 +120,7 @@ class PublicationController(
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
-        summary = "Удалить публикацию",
+        summary = "[ADMIN] Удалить публикацию",
         description = "Удаляет публикацию по её идентификатору."
     )
     @ApiResponses(

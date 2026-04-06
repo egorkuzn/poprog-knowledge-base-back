@@ -56,7 +56,7 @@ class ProjectMenuController(
 
     @PostMapping("/sections")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Создать секцию меню проектов", description = "Создает новую секцию hover-меню.")
+    @Operation(summary = "[ADMIN] Создать секцию меню проектов", description = "Создает новую секцию hover-меню.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "201", description = "Секция успешно создана"),
@@ -68,7 +68,7 @@ class ProjectMenuController(
         projectMenuUseCase.createSection(request.toCommand()).toDto()
 
     @PutMapping("/sections/{id}")
-    @Operation(summary = "Обновить секцию меню проектов", description = "Обновляет секцию hover-меню по идентификатору.")
+    @Operation(summary = "[ADMIN] Обновить секцию меню проектов", description = "Обновляет секцию hover-меню по идентификатору.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "200", description = "Секция успешно обновлена"),
@@ -84,7 +84,7 @@ class ProjectMenuController(
 
     @DeleteMapping("/sections/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Удалить секцию меню проектов", description = "Удаляет секцию hover-меню по идентификатору.")
+    @Operation(summary = "[ADMIN] Удалить секцию меню проектов", description = "Удаляет секцию hover-меню по идентификатору.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "204", description = "Секция успешно удалена"),
@@ -97,7 +97,7 @@ class ProjectMenuController(
 
     @PostMapping("/items")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Создать карточку меню проектов", description = "Создает карточку проекта или направления внутри секции.")
+    @Operation(summary = "[ADMIN] Создать карточку меню проектов", description = "Создает карточку проекта или направления внутри секции.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "201", description = "Карточка успешно создана"),
@@ -109,7 +109,7 @@ class ProjectMenuController(
         projectMenuUseCase.createItem(request.toCommand()).toDto()
 
     @PutMapping("/items/{id}")
-    @Operation(summary = "Обновить карточку меню проектов", description = "Обновляет карточку проекта или направления.")
+    @Operation(summary = "[ADMIN] Обновить карточку меню проектов", description = "Обновляет карточку проекта или направления.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "200", description = "Карточка успешно обновлена"),
@@ -124,7 +124,7 @@ class ProjectMenuController(
 
     @DeleteMapping("/items/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Удалить карточку меню проектов", description = "Удаляет карточку проекта или направления.")
+    @Operation(summary = "[ADMIN] Удалить карточку меню проектов", description = "Удаляет карточку проекта или направления.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "204", description = "Карточка успешно удалена"),
@@ -137,7 +137,7 @@ class ProjectMenuController(
 
     @PostMapping("/promos")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Создать промо-блок меню проектов", description = "Создает промо-карточку внутри секции.")
+    @Operation(summary = "[ADMIN] Создать промо-блок меню проектов", description = "Создает промо-карточку внутри секции.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "201", description = "Промо-блок успешно создан"),
@@ -149,7 +149,7 @@ class ProjectMenuController(
         projectMenuUseCase.createPromo(request.toCommand()).toDto()
 
     @PutMapping("/promos/{id}")
-    @Operation(summary = "Обновить промо-блок меню проектов", description = "Обновляет промо-карточку внутри секции.")
+    @Operation(summary = "[ADMIN] Обновить промо-блок меню проектов", description = "Обновляет промо-карточку внутри секции.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "200", description = "Промо-блок успешно обновлён"),
@@ -164,7 +164,7 @@ class ProjectMenuController(
 
     @DeleteMapping("/promos/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Удалить промо-блок меню проектов", description = "Удаляет промо-карточку внутри секции.")
+    @Operation(summary = "[ADMIN] Удалить промо-блок меню проектов", description = "Удаляет промо-карточку внутри секции.")
     @ApiResponses(
         value = [
             ApiResponse(responseCode = "204", description = "Промо-блок успешно удалён"),
@@ -181,7 +181,7 @@ class ProjectMenuController(
     )
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-        summary = "Загрузить ресурс для меню проектов",
+        summary = "[ADMIN] Загрузить ресурс для меню проектов",
         description = "Сохраняет изображение или другой ресурс для меню проектов и возвращает публичный URL."
     )
     @ApiResponses(
