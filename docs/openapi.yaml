@@ -231,7 +231,7 @@ paths:
       tags:
         - ИИ-ассистент
       summary: Отправить сообщение в чат с ИИ-ассистентом
-      description: Принимает новые сообщения для диалога, при наличии chatId подмешивает сохраненную историю, отправляет запрос в GigaChat и возвращает ответ ассистента.
+      description: Принимает новые сообщения для диалога, при наличии chatId подмешивает сохраненную историю, отправляет запрос в GigaChat и возвращает ответ ассистента. Если document.sourceUuid не задан, сервис извлекает UUID из текста сообщений и проверяет документы по ним; при отсутствии UUID подбирает релевантные документы по вопросу.
       operationId: assistantChat
       requestBody:
         required: true
@@ -595,11 +595,29 @@ components:
             - string
             - "null"
           format: uuid
+        document:
+          anyOf:
+            - $ref: "#/components/schemas/AiAssistantDocumentRefRequest"
+            - type: "null"
         messages:
           type: array
           minItems: 1
           items:
             $ref: "#/components/schemas/AiAssistantChatMessageRequest"
+    AiAssistantDocumentRefRequest:
+      type: object
+      properties:
+        sourceType:
+          type:
+            - string
+            - "null"
+          description: Тип документа (publication или student_work), необязателен для автоподбора
+        sourceUuid:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID документа, необязателен; если не передан, сервис извлекает UUID из текста сообщений
     AiAssistantChatMessageRequest:
       type: object
       required:
@@ -645,6 +663,51 @@ components:
           type:
             - integer
             - "null"
+        documentHints:
+          type: array
+          description: Подсказки по найденным документам, которые использовались в ответе
+          items:
+            $ref: "#/components/schemas/AiAssistantDocumentHintResponse"
+    AiAssistantDocumentHintResponse:
+      type: object
+      required:
+        - sourceType
+        - scoreHint
+        - groupTitle
+        - authors
+        - theme
+        - published
+        - snippet
+      properties:
+        sourceType:
+          type: string
+          description: Тип документа (publication или student_work)
+        sourceUuid:
+          type:
+            - string
+            - "null"
+          format: uuid
+        scoreHint:
+          type: integer
+          description: Количество совпавших фрагментов
+        groupTitle:
+          type: string
+        groupHash:
+          type:
+            - string
+            - "null"
+        authors:
+          type: string
+        theme:
+          type: string
+        published:
+          type: string
+        link:
+          type:
+            - string
+            - "null"
+        snippet:
+          type: string
     ChatHistoryResponse:
       type: object
       required:
