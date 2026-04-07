@@ -14,6 +14,9 @@ class SearchChunkService(
         private const val MIN_QUERY_LENGTH = 3
     }
 
+    override fun findBySource(sourceType: SearchSourceType, sourceId: Long, limit: Int): List<SearchChunk> =
+        searchChunkIndexPort.findBySource(sourceType, sourceId, limit)
+
     override fun search(
         query: String,
         limit: Int,

@@ -4,6 +4,8 @@ import com.example.poprogknowledgebaseback.domain.search.SearchChunk
 import com.example.poprogknowledgebaseback.domain.search.SearchSourceType
 
 interface SearchChunkUseCase {
+    fun findBySource(sourceType: SearchSourceType, sourceId: Long, limit: Int = 5): List<SearchChunk>
+
     fun search(
         query: String,
         limit: Int = 5,

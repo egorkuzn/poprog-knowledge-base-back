@@ -6,6 +6,7 @@ import com.example.poprogknowledgebaseback.domain.search.SearchSourceType
 import com.example.poprogknowledgebaseback.domain.search.port.SearchChunkIndexPort
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.data.elasticsearch.client.elc.NativeQuery
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates
@@ -62,7 +63,13 @@ class ElasticsearchSearchChunkIndexAdapter(
             }
             .build()
 
-        operations.delete(query, SearchChunkDocument::class.java, indexCoordinates)
+        val idsToDelete = operations.search(query, SearchChunkDocument::class.java, indexCoordinates)
+            .searchHits
+            .mapNotNull { it.id }
+
+        if (idsToDelete.isNotEmpty()) {
+            repository.deleteAllById(idsToDelete)
+        }
     }
 
     override fun search(
@@ -123,6 +130,26 @@ class ElasticsearchSearchChunkIndexAdapter(
                         .minimumShouldMatch("1")
                 }
             }
+            .withPageable(PageRequest.of(0, limit))
+            .build()
+
+        return operations.search(nativeQuery, SearchChunkDocument::class.java)
+            .searchHits
+            .map { it.content.toDomain() }
+    }
+
+    override fun findBySource(sourceType: SearchSourceType, sourceId: Long, limit: Int): List<SearchChunk> {
+        val nativeQuery = NativeQuery.builder()
+            .withQuery { q ->
+                q.bool { bool ->
+                    bool.filter { filter ->
+                        filter.term { term -> term.field("sourceType").value(sourceType.name) }
+                    }.filter { filter ->
+                        filter.term { term -> term.field("sourceId").value(sourceId) }
+                    }
+                }
+            }
+            .withSort(Sort.by(Sort.Order.asc("chunkIndex")))
             .withPageable(PageRequest.of(0, limit))
             .build()
 

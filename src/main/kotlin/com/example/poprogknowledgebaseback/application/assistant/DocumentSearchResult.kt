@@ -5,6 +5,7 @@ import com.example.poprogknowledgebaseback.domain.search.SearchSourceType
 data class DocumentSearchResult(
     val sourceType: SearchSourceType,
     val sourceId: Long,
+    val sourceUuid: String?,
     val scoreHint: Int,
     val groupTitle: String,
     val groupHash: String?,

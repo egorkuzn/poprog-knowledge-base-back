@@ -12,6 +12,7 @@ class NoOpSearchChunkIndexAdapter : SearchChunkIndexPort {
     override fun replaceAll(chunks: List<SearchChunk>) = Unit
     override fun index(chunks: List<SearchChunk>) = Unit
     override fun deleteBySource(sourceType: SearchSourceType, sourceId: Long) = Unit
+    override fun findBySource(sourceType: SearchSourceType, sourceId: Long, limit: Int): List<SearchChunk> = emptyList()
 
     override fun search(
         query: String,

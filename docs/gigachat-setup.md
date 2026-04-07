@@ -155,6 +155,7 @@ Swagger:
 curl -X POST http://localhost:8080/api/assistant/chat \
   -H 'Content-Type: application/json' \
   -d '{
+    "document": null,
     "messages": [
       {
         "role": "system",
@@ -172,14 +173,32 @@ curl -X POST http://localhost:8080/api/assistant/chat \
 
 ```json
 {
+  "chatId": "7f4b2a4a-2c9e-4a8f-9d53-9c11dd0a6b15",
   "content": "Привет! Я ИИ-ассистент на базе GigaChat.",
   "model": "GigaChat",
   "finishReason": "stop",
   "promptTokens": 18,
   "completionTokens": 12,
-  "totalTokens": 30
+  "totalTokens": 30,
+  "documentHints": []
 }
 ```
+
+Можно передать конкретный документ для ответов (если известен), иначе сервис подберет релевантные документы сам:
+
+```json
+{
+  "document": {
+    "sourceType": "publication",
+    "sourceUuid": "842786fa-7e33-45ff-8527-8c9dd08441a9"
+  },
+  "messages": [
+    { "role": "user", "content": "Какие инструменты упоминаются в работе?" }
+  ]
+}
+```
+
+Если `document.sourceUuid` не передан, сервис пытается извлечь UUID прямо из текста сообщений и найти документ по этому UUID автоматически.
 
 ## Что проверить, если не работает
 

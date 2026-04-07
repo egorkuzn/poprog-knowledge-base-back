@@ -1,6 +1,8 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.assistant
 
 import com.example.poprogknowledgebaseback.application.assistant.AiAssistantUseCase
+import com.example.poprogknowledgebaseback.application.assistant.AssistantDocumentHint
+import com.example.poprogknowledgebaseback.application.assistant.AssistantDocumentRef
 import com.example.poprogknowledgebaseback.application.assistant.AssistantChatCommand
 import com.example.poprogknowledgebaseback.application.assistant.AssistantChatResult
 import com.example.poprogknowledgebaseback.application.assistant.ChatHistoryMessageResult
@@ -52,7 +54,8 @@ class AiAssistantController(
         aiAssistantUseCase.chat(
             AssistantChatCommand(
                 chatId = request.chatId,
-                messages = request.messages.map { it.toDomain() }
+                messages = request.messages.map { it.toDomain() },
+                documentRef = request.document?.toDomain()
             )
         ).toDto()
 
@@ -86,7 +89,26 @@ class AiAssistantController(
         finishReason = finishReason,
         promptTokens = promptTokens,
         completionTokens = completionTokens,
-        totalTokens = totalTokens
+        totalTokens = totalTokens,
+        documentHints = documentHints.map { it.toDto() }
+    )
+
+    private fun AiAssistantDocumentRefRequest.toDomain() = AssistantDocumentRef(
+        sourceType = sourceType,
+        sourceUuid = sourceUuid
+    )
+
+    private fun AssistantDocumentHint.toDto() = AiAssistantDocumentHintResponse(
+        sourceType = sourceType,
+        sourceUuid = sourceUuid,
+        scoreHint = scoreHint,
+        groupTitle = groupTitle,
+        groupHash = groupHash,
+        authors = authors,
+        theme = theme,
+        published = published,
+        link = link,
+        snippet = snippet
     )
 
     private fun ChatHistoryResult.toDto() = ChatHistoryResponse(

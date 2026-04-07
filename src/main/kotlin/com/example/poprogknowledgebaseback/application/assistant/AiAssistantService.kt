@@ -8,6 +8,7 @@ import com.example.poprogknowledgebaseback.domain.assistant.ChatConversationNotF
 import com.example.poprogknowledgebaseback.domain.assistant.StoredChatMessage
 import com.example.poprogknowledgebaseback.domain.assistant.port.AiAssistantPort
 import com.example.poprogknowledgebaseback.domain.assistant.port.ChatConversationPersistencePort
+import com.example.poprogknowledgebaseback.domain.search.SearchSourceType
 import java.time.Clock
 import java.util.UUID
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional
 class AiAssistantService(
     private val aiAssistantPort: AiAssistantPort,
     private val chatConversationPersistencePort: ChatConversationPersistencePort,
+    private val documentQuestionResolver: DocumentQuestionResolver,
+    private val contextPromptBuilder: AssistantContextPromptBuilder,
     private val clock: Clock
 ) : AiAssistantUseCase {
 
@@ -40,7 +43,18 @@ class AiAssistantService(
         val history = chatConversationPersistencePort.findMessagesByChatIdOrderByCreatedAtAscIdAsc(conversation.id)
             .map { AiChatMessage(role = it.role, content = it.content) }
 
-        val assistantResponse = aiAssistantPort.complete(history + command.messages)
+        val documentContext = buildDocumentContext(command)
+        val documentHints = documentContext.hints
+        val systemPrompt = documentContext.systemPrompt
+        val messageList = if (systemPrompt.isBlank()) {
+            history + command.messages
+        } else {
+            listOf(
+                AiChatMessage(role = AiChatMessageRole.SYSTEM, content = systemPrompt)
+            ) + history + command.messages
+        }
+
+        val assistantResponse = aiAssistantPort.complete(messageList)
         persistConversationMessages(conversation.id, command.messages, assistantResponse)
 
         return AssistantChatResult(
@@ -50,8 +64,119 @@ class AiAssistantService(
             finishReason = assistantResponse.finishReason,
             promptTokens = assistantResponse.promptTokens,
             completionTokens = assistantResponse.completionTokens,
-            totalTokens = assistantResponse.totalTokens
+            totalTokens = assistantResponse.totalTokens,
+            documentHints = documentHints.map { it.toHint() }
         )
+    }
+
+    private fun buildDocumentContext(command: AssistantChatCommand): DocumentContext {
+        val userMessage = command.messages.lastOrNull { it.role == AiChatMessageRole.USER }?.content?.trim().orEmpty()
+        if (userMessage.isBlank()) {
+            return DocumentContext(emptyList(), "")
+        }
+
+        val ref = command.documentRef
+        val preferredType = ref?.sourceType?.let { sourceType ->
+            SearchSourceType.values().firstOrNull { it.name.equals(sourceType, ignoreCase = true) }
+        }
+        val explicitUuid = ref?.sourceUuid
+            ?.let { runCatching { UUID.fromString(it.trim()) }.getOrNull() }
+
+        val uuidsFromMessages = if (explicitUuid == null) {
+            documentQuestionResolver.extractUuids(command.messages.map { it.content })
+        } else {
+            emptyList()
+        }
+        val questionForSearch = sanitizeQuestion(userMessage, listOfNotNull(explicitUuid) + uuidsFromMessages)
+
+        val candidateUuids = listOfNotNull(explicitUuid) + uuidsFromMessages
+        if (candidateUuids.isNotEmpty()) {
+            val candidates = candidateUuids.flatMap { sourceUuid ->
+                documentQuestionResolver.resolveCandidatesByUuid(sourceUuid, preferredType)
+            }.distinctBy { Triple(it.sourceType, it.sourceId, it.sourceUuid) }
+
+            if (candidates.isNotEmpty()) {
+                val matches = candidates.mapNotNull { candidate ->
+                    val chunks = documentQuestionResolver.resolveChunksForDocument(
+                        question = questionForSearch,
+                        sourceType = candidate.sourceType,
+                        sourceId = candidate.sourceId
+                    )
+                    if (chunks.isEmpty()) {
+                        null
+                    } else {
+                        buildDocumentSearchResult(candidate, chunks)
+                    }
+                }
+
+                if (matches.isNotEmpty()) {
+                    val systemPrompt = contextPromptBuilder.buildSystemPrompt(matches)
+                    return DocumentContext(matches, systemPrompt)
+                }
+            }
+        }
+
+        val hints = documentQuestionResolver.resolveBestDocuments(questionForSearch)
+        if (hints.isEmpty()) {
+            return DocumentContext(emptyList(), "")
+        }
+        val systemPrompt = contextPromptBuilder.buildSystemPrompt(hints)
+        return DocumentContext(hints, systemPrompt)
+    }
+
+    private fun DocumentSearchResult.toHint() = AssistantDocumentHint(
+        sourceType = sourceType.name.lowercase(),
+        sourceUuid = sourceUuid,
+        scoreHint = scoreHint,
+        groupTitle = groupTitle,
+        groupHash = groupHash,
+        authors = authors,
+        theme = theme,
+        published = published,
+        link = link,
+        snippet = snippet
+    )
+
+    private data class DocumentContext(
+        val hints: List<DocumentSearchResult>,
+        val systemPrompt: String
+    )
+
+    private fun buildDocumentSearchResult(
+        candidate: DocumentCandidate,
+        chunks: List<com.example.poprogknowledgebaseback.domain.search.SearchChunk>
+    ): DocumentSearchResult {
+        val first = chunks.first()
+        val snippet = chunks.joinToString(" ") { it.content }
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .let { text -> if (text.length > 320) text.take(320) + "…" else text }
+
+        return DocumentSearchResult(
+            sourceType = candidate.sourceType,
+            sourceId = candidate.sourceId,
+            sourceUuid = candidate.sourceUuid,
+            scoreHint = chunks.size,
+            groupTitle = first.groupTitle,
+            groupHash = first.groupHash,
+            authors = first.authors,
+            theme = first.theme,
+            published = first.published,
+            link = first.link,
+            snippet = snippet
+        )
+    }
+
+    private fun sanitizeQuestion(message: String, uuids: List<UUID>): String {
+        if (uuids.isEmpty()) {
+            return message
+        }
+        var sanitized = message
+        uuids.forEach { uuid ->
+            sanitized = sanitized.replace(uuid.toString(), " ", ignoreCase = true)
+        }
+        sanitized = sanitized.replace(Regex("\\s+"), " ").trim()
+        return if (sanitized.length >= 3) sanitized else message
     }
 
     private fun persistConversationMessages(
