@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 
 data class PublicationModelDto(
+    val id: Long,
     val authors: String,
     val theme: String,
     val published: String,

@@ -1,5 +1,6 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.studentwork
 
+import com.example.poprogknowledgebaseback.adapters.inbound.web.requirePdfUpload
 import com.example.poprogknowledgebaseback.application.files.FileStorageUseCase
 import com.example.poprogknowledgebaseback.application.studentwork.StudentWorkResult
 import com.example.poprogknowledgebaseback.application.studentwork.StudentWorkUseCase
@@ -94,6 +95,7 @@ class StudentWorkController(
         @Valid @RequestPart("metadata") request: StudentWorkUploadRequest,
         @RequestPart("file") file: MultipartFile
     ): StudentWorkResponse {
+        requirePdfUpload(file)
         val storedFile = fileStorageUseCase.store("student-works", file)
         return studentWorkUseCase.create(request.toCommand(storedFile.url)).toDto()
     }
@@ -166,6 +168,7 @@ class StudentWorkController(
         hash = hash,
         works = works.map {
             WorkModelDto(
+                id = it.id,
                 authors = it.authors,
                 theme = it.theme,
                 published = it.published

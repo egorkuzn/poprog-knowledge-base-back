@@ -1,5 +1,6 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.publication
 
+import com.example.poprogknowledgebaseback.adapters.inbound.web.requirePdfUpload
 import com.example.poprogknowledgebaseback.application.files.FileStorageUseCase
 import com.example.poprogknowledgebaseback.application.publication.PublicationUseCase
 import com.example.poprogknowledgebaseback.application.publication.UpsertPublicationCommand
@@ -92,6 +93,7 @@ class PublicationController(
         @Valid @RequestPart("metadata") request: PublicationUploadRequest,
         @RequestPart("file") file: MultipartFile
     ): PublicationResponse {
+        requirePdfUpload(file)
         val storedFile = fileStorageUseCase.store("publications", file)
         return publicationUseCase.create(request.toCommand(storedFile.url)).toDto()
     }
@@ -162,6 +164,7 @@ class PublicationController(
         date = date,
         publications = publications.map {
             PublicationModelDto(
+                id = it.id,
                 authors = it.authors,
                 theme = it.theme,
                 published = it.published,

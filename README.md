@@ -133,6 +133,8 @@ kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 - `PUT /api/student-works/{id}`
 - `DELETE /api/student-works/{id}`
 
+`GET`-ответы grouped для публикаций и студенческих работ теперь содержат `id` каждого элемента, чтобы фронтенд мог прокручивать к конкретному найденному результату поиска.
+
 ### Поиск
 
 - `GET /api/search?q=<query>&limit=20`
@@ -163,6 +165,18 @@ kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 - `PUT /api/projects/menu/promos/{id}`
 - `DELETE /api/projects/menu/promos/{id}`
 - `POST /api/projects/menu/resources/upload`
+
+### Файлы
+
+- `GET /api/files/{path}`
+
+`GET /api/files/{path}` — публичная ручка получения PDF-файлов по относительному пути в storage (например, `publications/<file>.pdf` или `student-works/<file>.pdf`). При успехе файл отдается с `Content-Disposition: inline`, чтобы его можно было открыть в браузере.
+
+### Обратная связь
+
+- `POST /api/feedback/usefulness`
+
+`POST /api/feedback/usefulness` — публичная ручка для сохранения реакции пользователя о полезности сайта. Обязательные поля: `helpful`, `userName`, `userEmail`. Опциональные поля: `source`, `comment`. На backend также сохраняются `ipAddress` и `userAgent` из запроса.
 
 `GET /api/projects/menu` возвращает полную структуру hover-меню раздела "Проекты": секции, CTA, карточки направлений и промо-блоки.
 
