@@ -3,6 +3,7 @@ package com.example.poprogknowledgebaseback.adapters.inbound.web.studentwork
 import jakarta.validation.constraints.NotBlank
 
 data class WorkModelDto(
+    val id: Long,
     val authors: String,
     val theme: String,
     val published: String

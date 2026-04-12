@@ -28,6 +28,7 @@ class PublicationService(
                     date = year.toString(),
                     publications = yearPublications.map { publication ->
                         PublicationModel(
+                            id = publication.id ?: error("Publication id is missing"),
                             authors = publication.authors,
                             theme = publication.theme,
                             published = publication.published,

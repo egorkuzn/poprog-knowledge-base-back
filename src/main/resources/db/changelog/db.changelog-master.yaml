@@ -17,3 +17,7 @@ databaseChangeLog:
       file: db/changelog/008-seed-project-menu.sql
   - include:
       file: db/changelog/009-add-pdf-text-columns.sql
+  - include:
+      file: db/changelog/010-create-site-feedback-table.sql
+  - include:
+      file: db/changelog/011-add-identity-columns-to-site-feedback.sql

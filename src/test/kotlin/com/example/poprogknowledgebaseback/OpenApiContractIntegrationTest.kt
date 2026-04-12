@@ -47,6 +47,49 @@ class OpenApiContractIntegrationTest {
         assertTrue(paths.has("/api/student-works/grouped"))
         assertTrue(paths.has("/api/student-works/upload"))
         assertTrue(paths.has("/api/search"))
+        assertTrue(paths.has("/api/files/{path}"))
+        assertTrue(paths.has("/api/feedback/usefulness"))
+    }
+
+    @Test
+    fun `should mark admin mutation endpoints in openapi summaries`() {
+        val responseBody = mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val root = objectMapper.readTree(responseBody)
+        val paths = root["paths"]
+
+        val adminOperations = listOf(
+            "/api/publications" to "post",
+            "/api/publications/upload" to "post",
+            "/api/publications/{id}" to "put",
+            "/api/publications/{id}" to "delete",
+            "/api/student-works" to "post",
+            "/api/student-works/upload" to "post",
+            "/api/student-works/{id}" to "put",
+            "/api/student-works/{id}" to "delete",
+            "/api/projects/menu/sections" to "post",
+            "/api/projects/menu/sections/{id}" to "put",
+            "/api/projects/menu/sections/{id}" to "delete",
+            "/api/projects/menu/items" to "post",
+            "/api/projects/menu/items/{id}" to "put",
+            "/api/projects/menu/items/{id}" to "delete",
+            "/api/projects/menu/promos" to "post",
+            "/api/projects/menu/promos/{id}" to "put",
+            "/api/projects/menu/promos/{id}" to "delete",
+            "/api/projects/menu/resources/upload" to "post"
+        )
+
+        adminOperations.forEach { (path, method) ->
+            val summary = paths[path][method]["summary"].requiredText()
+            assertTrue(
+                summary.startsWith("[ADMIN]"),
+                "Operation $method $path must start with [ADMIN] in OpenAPI summary, but was: $summary"
+            )
+        }
     }
 
     companion object {

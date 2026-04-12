@@ -1,6 +1,7 @@
 package com.example.poprogknowledgebaseback.domain.studentwork
 
 data class WorkModel(
+    val id: Long,
     val authors: String,
     val theme: String,
     val published: String

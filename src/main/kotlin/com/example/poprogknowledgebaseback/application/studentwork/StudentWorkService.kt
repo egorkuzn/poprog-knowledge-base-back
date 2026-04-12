@@ -31,6 +31,7 @@ class StudentWorkService(
                     hash = first.projectTypeHash,
                     works = groupedWorks.map {
                         WorkModel(
+                            id = it.id ?: error("Student work id is missing"),
                             authors = it.authors,
                             theme = it.theme,
                             published = it.published
