@@ -4,6 +4,8 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -21,6 +23,7 @@ class DonationPaymentJpaEntity(
     @Column(nullable = false, precision = 12, scale = 2)
     var amount: BigDecimal,
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 3)
     var currency: String,
 
