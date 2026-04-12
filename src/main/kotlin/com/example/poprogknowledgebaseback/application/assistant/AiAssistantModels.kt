@@ -8,7 +8,8 @@ import java.util.UUID
 data class AssistantChatCommand(
     val chatId: UUID?,
     val messages: List<AiChatMessage>,
-    val documentRef: AssistantDocumentRef? = null
+    val documentRef: AssistantDocumentRef? = null,
+    val requesterSub: String? = null
 )
 
 data class AssistantChatResult(

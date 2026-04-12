@@ -178,6 +178,18 @@ kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 
 `POST /api/feedback/usefulness` — публичная ручка для сохранения реакции пользователя о полезности сайта. Обязательные поля: `helpful`, `userName`, `userEmail`. Опциональные поля: `source`, `comment`. На backend также сохраняются `ipAddress` и `userAgent` из запроса.
 
+### Личный кабинет
+
+- `GET /api/account/profile`
+- `PUT /api/account/profile`
+
+`/api/account/*` требует авторизацию. Пока Keycloak недоступен локально, можно использовать dev-заголовки (только для local/dev при `app.auth.dev-headers.enabled=true`):
+
+- `subject` (обязательный)
+- `email` (опциональный)
+- `name` (опциональный)
+- `roles` (опциональный, пример: `USER,ADMIN`)
+
 `GET /api/projects/menu` возвращает полную структуру hover-меню раздела "Проекты": секции, CTA, карточки направлений и промо-блоки.
 
 CRUD-ручки позволяют менять метаданные меню через backend, а `POST /api/projects/menu/resources/upload` сохраняет изображение или другой ресурс и возвращает публичный URL, который можно подставить в item или promo.

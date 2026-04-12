@@ -31,12 +31,17 @@ class AiAssistantService(
 
         val chatId = command.chatId ?: UUID.randomUUID()
         val conversation = command.chatId?.let { existingChatId ->
-            chatConversationPersistencePort.findConversationById(existingChatId)
+            val existingConversation = chatConversationPersistencePort.findConversationById(existingChatId)
                 ?: throw ChatConversationNotFoundException(existingChatId)
+            if (existingConversation.ownerSub != null && command.requesterSub != existingConversation.ownerSub) {
+                throw ChatConversationNotFoundException(existingChatId)
+            }
+            existingConversation
         } ?: chatConversationPersistencePort.saveConversation(
             ChatConversation(
                 id = chatId,
-                createdAt = clock.instant()
+                createdAt = clock.instant(),
+                ownerSub = command.requesterSub
             )
         )
 

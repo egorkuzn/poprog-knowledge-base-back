@@ -3,5 +3,5 @@ package com.example.poprogknowledgebaseback.application.assistant
 import java.util.UUID
 
 interface ChatHistoryUseCase {
-    fun getHistory(chatId: UUID): ChatHistoryResult
+    fun getHistory(chatId: UUID, requesterSub: String?): ChatHistoryResult
 }

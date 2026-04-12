@@ -1,0 +1,22 @@
+package com.example.poprogknowledgebaseback.adapters.inbound.web.account
+
+import jakarta.validation.constraints.Email
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
+
+data class AccountProfileResponse(
+    val subject: String,
+    val name: String,
+    val email: String,
+    val roles: Set<String>
+)
+
+data class UpdateAccountProfileRequest(
+    @field:NotBlank
+    @field:Size(max = 120)
+    val name: String,
+    @field:NotBlank
+    @field:Email
+    @field:Size(max = 254)
+    val email: String
+)

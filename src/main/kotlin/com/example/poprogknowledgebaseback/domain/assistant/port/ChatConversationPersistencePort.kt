@@ -7,6 +7,7 @@ import java.util.UUID
 interface ChatConversationPersistencePort {
     fun findConversationById(chatId: UUID): ChatConversation?
     fun saveConversation(conversation: ChatConversation): ChatConversation
+    fun findConversationsByOwnerSubOrderByCreatedAtDesc(ownerSub: String, limit: Int): List<ChatConversation>
     fun saveMessages(messages: List<StoredChatMessage>): List<StoredChatMessage>
     fun findMessagesByChatIdOrderByCreatedAtAscIdAsc(chatId: UUID): List<StoredChatMessage>
 }
