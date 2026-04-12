@@ -12,9 +12,12 @@ class ChatHistoryService(
 ) : ChatHistoryUseCase {
 
     @Transactional(readOnly = true)
-    override fun getHistory(chatId: UUID): ChatHistoryResult {
-        chatConversationPersistencePort.findConversationById(chatId)
+    override fun getHistory(chatId: UUID, requesterSub: String?): ChatHistoryResult {
+        val conversation = chatConversationPersistencePort.findConversationById(chatId)
             ?: throw ChatConversationNotFoundException(chatId)
+        if (conversation.ownerSub != null && requesterSub != conversation.ownerSub) {
+            throw ChatConversationNotFoundException(chatId)
+        }
 
         val messages = chatConversationPersistencePort.findMessagesByChatIdOrderByCreatedAtAscIdAsc(chatId)
 

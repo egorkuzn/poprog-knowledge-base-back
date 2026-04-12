@@ -1,5 +1,7 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.assistant
 
+import com.example.poprogknowledgebaseback.adapters.inbound.web.auth.CurrentUser
+import com.example.poprogknowledgebaseback.adapters.inbound.web.auth.CurrentUserParam
 import com.example.poprogknowledgebaseback.application.assistant.AiAssistantUseCase
 import com.example.poprogknowledgebaseback.application.assistant.AssistantDocumentHint
 import com.example.poprogknowledgebaseback.application.assistant.AssistantDocumentRef
@@ -50,12 +52,16 @@ class AiAssistantController(
             ApiResponse(responseCode = "503", description = "Интеграция с GigaChat временно недоступна")
         ]
     )
-    fun chat(@Valid @RequestBody request: AiAssistantChatRequest): AiAssistantChatResponse =
+    fun chat(
+        @CurrentUserParam(required = false) currentUser: CurrentUser?,
+        @Valid @RequestBody request: AiAssistantChatRequest
+    ): AiAssistantChatResponse =
         aiAssistantUseCase.chat(
             AssistantChatCommand(
                 chatId = request.chatId,
                 messages = request.messages.map { it.toDomain() },
-                documentRef = request.document?.toDomain()
+                documentRef = request.document?.toDomain(),
+                requesterSub = currentUser?.subject
             )
         ).toDto()
 
@@ -74,8 +80,11 @@ class AiAssistantController(
             ApiResponse(responseCode = "404", description = "Диалог не найден")
         ]
     )
-    fun getChatHistory(@PathVariable chatId: UUID): ChatHistoryResponse =
-        chatHistoryUseCase.getHistory(chatId).toDto()
+    fun getChatHistory(
+        @CurrentUserParam(required = false) currentUser: CurrentUser?,
+        @PathVariable chatId: UUID
+    ): ChatHistoryResponse =
+        chatHistoryUseCase.getHistory(chatId, requesterSub = currentUser?.subject).toDto()
 
     private fun AiAssistantChatMessageRequest.toDomain() = AiChatMessage(
         role = AiChatMessageRole.valueOf(role.uppercase()),

@@ -14,5 +14,7 @@ class ChatConversationJpaEntity(
     @Column(nullable = false, updatable = false)
     val id: UUID,
     @Column(name = "created_at", nullable = false)
-    val createdAt: Instant
+    val createdAt: Instant,
+    @Column(name = "owner_sub", length = 128)
+    val ownerSub: String? = null
 )

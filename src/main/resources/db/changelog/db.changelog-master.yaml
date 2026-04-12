@@ -23,3 +23,9 @@ databaseChangeLog:
       file: db/changelog/011-add-identity-columns-to-site-feedback.sql
   - include:
       file: db/changelog/012-create-user-account-table.sql
+  - include:
+      file: db/changelog/013-add-owner-to-chat-conversation.sql
+  - include:
+      file: db/changelog/014-create-favorite-item-table.sql
+  - include:
+      file: db/changelog/015-create-donation-payment-table.sql

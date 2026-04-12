@@ -18,6 +18,11 @@ class ChatConversationPersistenceAdapter(
     override fun saveConversation(conversation: ChatConversation): ChatConversation =
         chatConversationRepository.save(conversation.toEntity()).toDomain()
 
+    override fun findConversationsByOwnerSubOrderByCreatedAtDesc(ownerSub: String, limit: Int): List<ChatConversation> =
+        chatConversationRepository.findTop100ByOwnerSubOrderByCreatedAtDesc(ownerSub)
+            .take(limit.coerceAtLeast(1))
+            .map { it.toDomain() }
+
     override fun saveMessages(messages: List<StoredChatMessage>): List<StoredChatMessage> =
         chatMessageRepository.saveAll(messages.map { it.toEntity() }).map { it.toDomain() }
 
@@ -26,12 +31,14 @@ class ChatConversationPersistenceAdapter(
 
     private fun ChatConversationJpaEntity.toDomain() = ChatConversation(
         id = id,
-        createdAt = createdAt
+        createdAt = createdAt,
+        ownerSub = ownerSub
     )
 
     private fun ChatConversation.toEntity() = ChatConversationJpaEntity(
         id = id,
-        createdAt = createdAt
+        createdAt = createdAt,
+        ownerSub = ownerSub
     )
 
     private fun ChatMessageJpaEntity.toDomain() = StoredChatMessage(
