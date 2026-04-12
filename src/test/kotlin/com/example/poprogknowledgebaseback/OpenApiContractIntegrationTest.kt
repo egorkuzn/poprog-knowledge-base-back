@@ -49,6 +49,7 @@ class OpenApiContractIntegrationTest {
         assertTrue(paths.has("/api/search"))
         assertTrue(paths.has("/api/files/{path}"))
         assertTrue(paths.has("/api/feedback/usefulness"))
+        assertTrue(paths.has("/api/account/profile"))
     }
 
     @Test
