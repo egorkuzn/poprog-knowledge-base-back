@@ -1,0 +1,46 @@
+# POPROG Back Docs
+
+Документация backend-сервиса по состоянию на 2026-04-12.
+
+## Локальный запуск
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=local --server.port=18080'
+```
+
+## Аутентификация в dev/local
+
+Для защищенных account-endpoints используется заголовочная авторизация:
+
+- `subject`
+- `email`
+- `name`
+- `roles`
+
+## Ключевые API (актуально)
+
+- `/api/account/profile`
+- `/api/account/chats`
+- `/api/account/favorites`
+- `/api/account/donations`
+- `/api/donations` (публичный донат без авторизации)
+- `/api/market/apps`
+- `/api/market/categories`
+- `/api/search`
+- `/api/files/{path}`
+
+## CORS
+
+Для локальной разработки включены origins:
+
+- `http://localhost:5173`
+- `http://localhost:5174`
+
+(mapping для `/api/**`)
+
+## Связанные документы
+
+- `docs/openapi.yaml`
+- `docs/dev-header-auth.md`
+- `docs/gigachat-setup.md`
+- `docs/gigachat-truststore-setup.md`
