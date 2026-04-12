@@ -51,7 +51,7 @@ class AccountDonationService(
             .map { it.toResult() }
 
     @Transactional
-    fun createDonation(userSub: String, command: CreateDonationCommand): AccountDonationResult {
+    fun createDonation(userSub: String?, command: CreateDonationCommand): AccountDonationResult {
         val now = OffsetDateTime.now(clock)
         val paymentId = UUID.randomUUID()
         val normalizedCurrency = command.currency.trim().uppercase()
