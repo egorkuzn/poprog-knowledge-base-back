@@ -53,6 +53,16 @@ class OpenApiContractIntegrationTest {
         assertTrue(paths.has("/api/account/chats"))
         assertTrue(paths.has("/api/account/favorites"))
         assertTrue(paths.has("/api/account/donations"))
+        assertTrue(paths.has("/api/account/donations/export.csv"))
+        assertTrue(paths.has("/api/account/donations/export.pdf"))
+        assertTrue(paths.has("/api/admin/donations/kpi"))
+        assertTrue(paths.has("/api/admin/donations/events"))
+        assertTrue(paths.has("/api/admin/donations/export.csv"))
+        assertTrue(paths.has("/api/admin/donations/export.pdf"))
+        assertTrue(paths.has("/api/metrics/events"))
+        assertTrue(paths.has("/api/metrics/reports/dau-wau"))
+        assertTrue(paths.has("/api/metrics/reports/search-success"))
+        assertTrue(paths.has("/api/metrics/reports/ctr"))
         assertTrue(paths.has("/api/market/apps"))
         assertTrue(paths.has("/api/market/categories"))
         assertTrue(paths.has("/api/donations"))
@@ -87,7 +97,11 @@ class OpenApiContractIntegrationTest {
             "/api/projects/menu/promos" to "post",
             "/api/projects/menu/promos/{id}" to "put",
             "/api/projects/menu/promos/{id}" to "delete",
-            "/api/projects/menu/resources/upload" to "post"
+            "/api/projects/menu/resources/upload" to "post",
+            "/api/admin/donations/kpi" to "get",
+            "/api/admin/donations/events" to "get",
+            "/api/admin/donations/export.csv" to "get",
+            "/api/admin/donations/export.pdf" to "get"
         )
 
         adminOperations.forEach { (path, method) ->

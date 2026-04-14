@@ -15,13 +15,19 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.math.BigDecimal
+import java.time.OffsetDateTime
 import java.util.UUID
+import org.springframework.http.ContentDisposition
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
@@ -73,6 +79,34 @@ class AccountDonationController(
     fun getDonations(@CurrentUserParam currentUser: CurrentUser): List<AccountDonationResponse> =
         accountDonationService.getDonations(currentUser.subject)
             .map { it.toResponse() }
+
+    @GetMapping("/export.csv")
+    @Operation(summary = "Экспортировать историю пожертвований в CSV")
+    fun exportDonationsCsv(
+        @CurrentUserParam currentUser: CurrentUser,
+        @RequestParam(required = false) from: OffsetDateTime?,
+        @RequestParam(required = false) to: OffsetDateTime?
+    ): ResponseEntity<ByteArray> {
+        val payload = accountDonationService.exportDonationsCsv(currentUser.subject, from, to)
+        val headers = HttpHeaders()
+        headers.contentType = MediaType.parseMediaType("text/csv; charset=utf-8")
+        headers.contentDisposition = ContentDisposition.attachment().filename("account-donations.csv").build()
+        return ResponseEntity(payload, headers, HttpStatus.OK)
+    }
+
+    @GetMapping("/export.pdf")
+    @Operation(summary = "Экспортировать историю пожертвований в PDF")
+    fun exportDonationsPdf(
+        @CurrentUserParam currentUser: CurrentUser,
+        @RequestParam(required = false) from: OffsetDateTime?,
+        @RequestParam(required = false) to: OffsetDateTime?
+    ): ResponseEntity<ByteArray> {
+        val payload = accountDonationService.exportDonationsPdf(currentUser.subject, from, to)
+        val headers = HttpHeaders()
+        headers.contentType = MediaType.APPLICATION_PDF
+        headers.contentDisposition = ContentDisposition.attachment().filename("account-donations.pdf").build()
+        return ResponseEntity(payload, headers, HttpStatus.OK)
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

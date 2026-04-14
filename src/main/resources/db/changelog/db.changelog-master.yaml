@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/014-create-favorite-item-table.sql
   - include:
       file: db/changelog/015-create-donation-payment-table.sql
+  - include:
+      file: db/changelog/016-create-product-metric-event-table.sql

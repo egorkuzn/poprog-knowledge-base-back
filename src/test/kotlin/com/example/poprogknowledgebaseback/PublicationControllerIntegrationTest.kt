@@ -153,6 +153,93 @@ class PublicationControllerIntegrationTest {
         assertTrue(created["link"].requiredText().startsWith("/files/publications/"))
     }
 
+    @Test
+    fun `should reject non-pdf upload for publication`() {
+        val metadata = MockMultipartFile(
+            "metadata",
+            "",
+            MediaType.APPLICATION_JSON_VALUE,
+            """
+            {
+              "year": 2026,
+              "authors": "Upload Author",
+              "theme": "Upload Theme",
+              "published": "Upload Published"
+            }
+            """.trimIndent().toByteArray()
+        )
+        val file = MockMultipartFile(
+            "file",
+            "publication.txt",
+            MediaType.TEXT_PLAIN_VALUE,
+            "plain-text".toByteArray()
+        )
+
+        mockMvc.perform(
+            multipart("/api/publications/upload")
+                .file(metadata)
+                .file(file)
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `should return uploaded pdf via api files endpoint`() {
+        val metadata = MockMultipartFile(
+            "metadata",
+            "",
+            MediaType.APPLICATION_JSON_VALUE,
+            """
+            {
+              "year": 2026,
+              "authors": "File API Author",
+              "theme": "File API Theme",
+              "published": "File API Published"
+            }
+            """.trimIndent().toByteArray()
+        )
+        val file = MockMultipartFile(
+            "file",
+            "publication.pdf",
+            MediaType.APPLICATION_PDF_VALUE,
+            "pdf-content".toByteArray()
+        )
+
+        val responseBody = mockMvc.perform(
+            multipart("/api/publications/upload")
+                .file(metadata)
+                .file(file)
+        )
+            .andExpect(status().isCreated)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val link = objectMapper.readTree(responseBody)["link"].requiredText()
+        val relativePath = link.removePrefix("/files/").trimStart('/')
+
+        mockMvc.perform(get("/api/files/$relativePath"))
+            .andExpect(status().isOk)
+    }
+
+    @Test
+    fun `should return html error for missing pdf file`() {
+        mockMvc.perform(get("/api/files/publications/not-found.pdf"))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `should return html error for non-pdf request`() {
+        mockMvc.perform(get("/api/files/publications/not-allowed.txt"))
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `should reject path traversal attempts in file endpoint`() {
+        mockMvc.perform(get("/api/files/publications/../secret.pdf"))
+            .andExpect(status().isBadRequest)
+    }
+
     companion object {
         @Container
         private val postgres = PostgreSQLContainer("postgres:18")
