@@ -153,6 +153,36 @@ class StudentWorkControllerIntegrationTest {
         assertTrue(created["documentLink"].requiredText().startsWith("/files/student-works/"))
     }
 
+    @Test
+    fun `should reject non-pdf upload for student work`() {
+        val metadata = MockMultipartFile(
+            "metadata",
+            "",
+            MediaType.APPLICATION_JSON_VALUE,
+            """
+            {
+              "projectTypeHash": "industrial-c",
+              "authors": "Автор с файлом",
+              "theme": "Тема с файлом",
+              "published": "Публикация с файлом"
+            }
+            """.trimIndent().toByteArray()
+        )
+        val file = MockMultipartFile(
+            "file",
+            "student-work.txt",
+            MediaType.TEXT_PLAIN_VALUE,
+            "plain-text".toByteArray()
+        )
+
+        mockMvc.perform(
+            multipart("/api/student-works/upload")
+                .file(metadata)
+                .file(file)
+        )
+            .andExpect(status().isBadRequest)
+    }
+
     companion object {
         @Container
         private val postgres = PostgreSQLContainer("postgres:18")

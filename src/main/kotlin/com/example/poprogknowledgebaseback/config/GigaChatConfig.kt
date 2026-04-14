@@ -3,6 +3,7 @@ package com.example.poprogknowledgebaseback.config
 import java.io.FileInputStream
 import java.security.KeyStore
 import java.time.Clock
+import org.slf4j.LoggerFactory
 import org.apache.hc.client5.http.classic.HttpClient
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder
@@ -20,11 +21,13 @@ import org.springframework.web.client.RestClient
 @Configuration
 @EnableConfigurationProperties(GigaChatProperties::class)
 class GigaChatConfig {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Bean
     fun clock(): Clock = Clock.systemUTC()
 
     @Bean
+    @ConditionalOnProperty(name = ["app.gigachat.enabled"], havingValue = "true")
     fun restClientBuilder(properties: GigaChatProperties): RestClient.Builder {
         val requestFactory = HttpComponentsClientHttpRequestFactory(gigaChatHttpClient(properties))
         return RestClient.builder().requestFactory(requestFactory)
@@ -58,26 +61,39 @@ class GigaChatConfig {
             return HttpClients.createDefault()
         }
 
-        require(properties.trustStorePassword.isNotBlank()) {
-            "GigaChat trust store password is required when trust store path is configured"
+        if (properties.trustStorePassword.isBlank()) {
+            log.warn(
+                "GigaChat trust store path is configured ('{}') but password is empty. Falling back to default JVM trust store.",
+                trustStorePath
+            )
+            return HttpClients.createDefault()
         }
 
-        val trustStore = KeyStore.getInstance(properties.trustStoreType).apply {
-            FileInputStream(trustStorePath).use { input ->
-                load(input, properties.trustStorePassword.toCharArray())
+        return runCatching {
+            val trustStore = KeyStore.getInstance(properties.trustStoreType).apply {
+                FileInputStream(trustStorePath).use { input ->
+                    load(input, properties.trustStorePassword.toCharArray())
+                }
             }
+
+            val sslContext = SSLContextBuilder()
+                .loadTrustMaterial(trustStore, null)
+                .build()
+
+            val connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
+                .setTlsSocketStrategy(DefaultClientTlsStrategy(sslContext))
+                .build()
+
+            HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .build()
+        }.getOrElse { error ->
+            log.warn(
+                "Cannot initialize GigaChat custom trust store from '{}'. Falling back to default JVM trust store.",
+                trustStorePath,
+                error
+            )
+            HttpClients.createDefault()
         }
-
-        val sslContext = SSLContextBuilder()
-            .loadTrustMaterial(trustStore, null)
-            .build()
-
-        val connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
-            .setTlsSocketStrategy(DefaultClientTlsStrategy(sslContext))
-            .build()
-
-        return HttpClients.custom()
-            .setConnectionManager(connectionManager)
-            .build()
     }
 }

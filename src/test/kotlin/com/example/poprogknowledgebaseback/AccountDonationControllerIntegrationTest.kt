@@ -103,6 +103,108 @@ class AccountDonationControllerIntegrationTest {
         assertEquals("SUCCEEDED", updateJson["status"].asText())
         assertEquals("yoopay-123", updateJson["providerPaymentId"].asText())
         assertTrue(updateJson["paidAt"].asText().isNotBlank())
+
+        val csvResponse = mockMvc.perform(
+            get("/api/account/donations/export.csv")
+                .header("subject", "user-100")
+                .header("email", "user100@example.com")
+                .header("name", "User 100")
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+
+        val csvPayload = csvResponse.contentAsString
+        assertTrue(csvPayload.contains("yoopay-123"))
+        assertTrue(csvPayload.contains(donationId))
+
+        val pdfResponse = mockMvc.perform(
+            get("/api/account/donations/export.pdf")
+                .header("subject", "user-100")
+                .header("email", "user100@example.com")
+                .header("name", "User 100")
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+
+        val pdfPayload = pdfResponse.contentAsByteArray
+        assertTrue(pdfPayload.isNotEmpty())
+        val pdfHeader = String(pdfPayload.copyOfRange(0, minOf(4, pdfPayload.size)))
+        assertEquals("%PDF", pdfHeader)
+    }
+
+    @Test
+    fun `should export only current user donations and support period filter`() {
+        val firstPayload =
+            """
+            {
+              "amount": 400.00,
+              "currency": "RUB",
+              "source": "cabinet",
+              "message": "User 101 donation",
+              "returnUrl": "http://localhost:5173/donate/complete"
+            }
+            """.trimIndent()
+        val secondPayload =
+            """
+            {
+              "amount": 500.00,
+              "currency": "RUB",
+              "source": "cabinet",
+              "message": "User 202 donation",
+              "returnUrl": "http://localhost:5173/donate/complete"
+            }
+            """.trimIndent()
+
+        mockMvc.perform(
+            post("/api/account/donations")
+                .header("subject", "user-101")
+                .header("email", "user101@example.com")
+                .header("name", "User 101")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(firstPayload)
+        )
+            .andExpect(status().isCreated)
+
+        mockMvc.perform(
+            post("/api/account/donations")
+                .header("subject", "user-202")
+                .header("email", "user202@example.com")
+                .header("name", "User 202")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(secondPayload)
+        )
+            .andExpect(status().isCreated)
+
+        val ownCsv = mockMvc.perform(
+            get("/api/account/donations/export.csv")
+                .header("subject", "user-101")
+                .header("email", "user101@example.com")
+                .header("name", "User 101")
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        assertTrue(ownCsv.contains("User 101 donation"))
+        assertTrue(!ownCsv.contains("User 202 donation"))
+
+        val futureCsv = mockMvc.perform(
+            get("/api/account/donations/export.csv")
+                .header("subject", "user-101")
+                .header("email", "user101@example.com")
+                .header("name", "User 101")
+                .param("from", "2100-01-01T00:00:00Z")
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        assertTrue(futureCsv.contains("id,amount,currency,status"))
+        assertTrue(!futureCsv.contains("User 101 donation"))
     }
 
     @Test

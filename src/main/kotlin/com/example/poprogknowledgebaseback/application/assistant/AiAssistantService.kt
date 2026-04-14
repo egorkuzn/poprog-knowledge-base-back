@@ -11,7 +11,9 @@ import com.example.poprogknowledgebaseback.domain.assistant.port.ChatConversatio
 import com.example.poprogknowledgebaseback.domain.search.SearchSourceType
 import java.time.Clock
 import java.util.UUID
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.core.env.Environment
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -22,8 +24,10 @@ class AiAssistantService(
     private val chatConversationPersistencePort: ChatConversationPersistencePort,
     private val documentQuestionResolver: DocumentQuestionResolver,
     private val contextPromptBuilder: AssistantContextPromptBuilder,
-    private val clock: Clock
+    private val clock: Clock,
+    private val environment: Environment
 ) : AiAssistantUseCase {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional
     override fun chat(command: AssistantChatCommand): AssistantChatResult {
@@ -59,7 +63,15 @@ class AiAssistantService(
             ) + history + command.messages
         }
 
-        val assistantResponse = aiAssistantPort.complete(messageList)
+        val assistantResponse = runCatching { aiAssistantPort.complete(messageList) }
+            .getOrElse { error ->
+                if (!isLocalLikeProfile()) {
+                    throw error
+                }
+
+                log.warn("GigaChat request failed in local/dev profile. Returning local fallback response.", error)
+                buildLocalFallbackResponse(command.messages)
+            }
         persistConversationMessages(conversation.id, command.messages, assistantResponse)
 
         return AssistantChatResult(
@@ -182,6 +194,29 @@ class AiAssistantService(
         }
         sanitized = sanitized.replace(Regex("\\s+"), " ").trim()
         return if (sanitized.length >= 3) sanitized else message
+    }
+
+    private fun isLocalLikeProfile(): Boolean {
+        val activeProfiles = environment.activeProfiles.map { it.lowercase() }.toSet()
+        return activeProfiles.any { it == "local" || it == "dev" }
+    }
+
+    private fun buildLocalFallbackResponse(requestMessages: List<AiChatMessage>): AiAssistantResponse {
+        val lastUserMessage = requestMessages.lastOrNull { it.role == AiChatMessageRole.USER }?.content?.trim().orEmpty()
+        val content = if (lastUserMessage.isBlank()) {
+            "Локальный режим: внешний ИИ-сервис сейчас недоступен. История чата сохранена, но ответ модели временно заменён локальной заглушкой."
+        } else {
+            "Локальный режим: внешний ИИ-сервис сейчас недоступен. История чата сохранена, но ответ модели временно заменён локальной заглушкой. Последний запрос: \"$lastUserMessage\"."
+        }
+
+        return AiAssistantResponse(
+            content = content,
+            model = "local-fallback",
+            finishReason = "stop",
+            promptTokens = null,
+            completionTokens = null,
+            totalTokens = null
+        )
     }
 
     private fun persistConversationMessages(

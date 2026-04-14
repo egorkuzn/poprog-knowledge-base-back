@@ -23,7 +23,17 @@
 - `/api/account/chats`
 - `/api/account/favorites`
 - `/api/account/donations`
+- `/api/account/donations/export.csv`
+- `/api/account/donations/export.pdf`
 - `/api/donations` (публичный донат без авторизации)
+- `/api/admin/donations/kpi` (`[ADMIN]`)
+- `/api/admin/donations/events` (`[ADMIN]`, фильтры + пагинация)
+- `/api/admin/donations/export.csv` (`[ADMIN]`)
+- `/api/admin/donations/export.pdf` (`[ADMIN]`)
+- `/api/metrics/events`
+- `/api/metrics/reports/dau-wau`
+- `/api/metrics/reports/search-success`
+- `/api/metrics/reports/ctr`
 - `/api/market/apps`
 - `/api/market/categories`
 - `/api/search`
