@@ -13,13 +13,16 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import tools.jackson.databind.ObjectMapper
 
 @Service
 @ConditionalOnProperty(name = ["app.gigachat.enabled"], havingValue = "false", matchIfMissing = true)
 class NoOpAiAssistantService(
     private val chatConversationPersistencePort: ChatConversationPersistencePort,
+    private val assistantWidgetRouter: AssistantWidgetRouter,
     private val clock: Clock,
-    private val environment: Environment
+    private val environment: Environment,
+    private val objectMapper: ObjectMapper
 ) : AiAssistantUseCase {
 
     @Transactional
@@ -49,6 +52,24 @@ class NoOpAiAssistantService(
             )
         )
 
+        val widgetResponse = assistantWidgetRouter.resolve(command)
+        if (widgetResponse != null) {
+            val widgetContent = widgetResponse.subtitle ?: widgetResponse.title
+            persistConversationMessages(conversation.id, command.messages, widgetContent, widgetResponse)
+            return AssistantChatResult(
+                chatId = conversation.id,
+                content = widgetContent,
+                model = "widget-router",
+                finishReason = "stop",
+                promptTokens = null,
+                completionTokens = null,
+                totalTokens = null,
+                documentHints = emptyList(),
+                mode = AssistantResponseMode.WIDGET,
+                widget = widgetResponse
+            )
+        }
+
         val lastUserMessage = command.messages.lastOrNull { it.role == AiChatMessageRole.USER }?.content?.trim().orEmpty()
         val fallbackResponse = if (lastUserMessage.isBlank()) {
             "Локальный режим: интеграция GigaChat отключена. История чата сохранена, но ответ модели сейчас недоступен."
@@ -66,7 +87,8 @@ class NoOpAiAssistantService(
             promptTokens = null,
             completionTokens = null,
             totalTokens = null,
-            documentHints = emptyList()
+            documentHints = emptyList(),
+            mode = AssistantResponseMode.TEXT
         )
     }
 
@@ -78,7 +100,8 @@ class NoOpAiAssistantService(
     private fun persistConversationMessages(
         chatId: UUID,
         requestMessages: List<com.example.poprogknowledgebaseback.domain.assistant.AiChatMessage>,
-        assistantResponse: String
+        assistantResponse: String,
+        widgetResponse: AssistantWidgetResult? = null
     ) {
         val now = clock.instant()
         val messages = requestMessages.mapIndexed { index, message ->
@@ -92,6 +115,7 @@ class NoOpAiAssistantService(
             chatId = chatId,
             role = AiChatMessageRole.ASSISTANT,
             content = assistantResponse,
+            widgetPayload = widgetResponse?.let { objectMapper.writeValueAsString(it) },
             createdAt = now.plusMillis(requestMessages.size.toLong())
         )
 

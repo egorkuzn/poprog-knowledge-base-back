@@ -4,6 +4,8 @@ import com.example.poprogknowledgebaseback.domain.assistant.AiAssistantResponse
 import com.example.poprogknowledgebaseback.domain.assistant.AiChatMessage
 import com.example.poprogknowledgebaseback.domain.assistant.AiChatMessageRole
 import com.example.poprogknowledgebaseback.domain.assistant.port.AiAssistantPort
+import com.example.poprogknowledgebaseback.domain.publication.Publication
+import com.example.poprogknowledgebaseback.domain.publication.port.PublicationPersistencePort
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.assertEquals
@@ -46,6 +48,9 @@ class AiAssistantControllerIntegrationTest {
 
     @Autowired
     private lateinit var recordingAiAssistantPort: RecordingAiAssistantPort
+
+    @Autowired
+    private lateinit var publicationPersistencePort: PublicationPersistencePort
 
     @Test
     fun `should create chat and return persisted history`() {
@@ -161,6 +166,132 @@ class AiAssistantControllerIntegrationTest {
                     """.trimIndent()
                 )
         ).andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `should return publications widget without calling llm`() {
+        publicationPersistencePort.save(
+            Publication(
+                id = null,
+                year = 2025,
+                authors = "Иванов И.И.",
+                theme = "Reflex для безопасных систем управления",
+                published = "Вестник Poprog",
+                link = "https://example.org/reflex-paper.pdf"
+            )
+        )
+
+        val responseBody = mockMvc.perform(
+            post("/api/assistant/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "messages": [
+                        { "role": "user", "content": "Какие есть публикации?" }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val response = objectMapper.readTree(responseBody)
+        val chatId = UUID.fromString(response["chatId"].requiredText())
+        assertEquals("widget", response["mode"].requiredText())
+        assertEquals("publications_list", response["widget"]["widgetType"].requiredText())
+        assertTrue(response["widget"]["items"].size() > 0)
+        assertEquals(0, recordingAiAssistantPort.recordedRequests.size)
+
+        val historyBody = mockMvc.perform(get("/api/assistant/chats/{chatId}/messages", chatId))
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+        val history = objectMapper.readTree(historyBody)
+        assertEquals("publications_list", history["messages"][1]["widget"]["widgetType"].requiredText())
+    }
+
+    @Test
+    fun `should return publications widget for fuzzy matched phrase`() {
+        val responseBody = mockMvc.perform(
+            post("/api/assistant/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "messages": [
+                        { "role": "user", "content": "какие есь публикацыи" }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val response = objectMapper.readTree(responseBody)
+        assertEquals("widget", response["mode"].requiredText())
+        assertEquals("publications_list", response["widget"]["widgetType"].requiredText())
+        assertEquals(0, recordingAiAssistantPort.recordedRequests.size)
+    }
+
+    @Test
+    fun `should return branch widget for language question without calling llm`() {
+        val responseBody = mockMvc.perform(
+            post("/api/assistant/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                        """
+                    {
+                      "messages": [
+                        { "role": "user", "content": "Что у вас есть по Reflex?" }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val response = objectMapper.readTree(responseBody)
+        assertEquals("widget", response["mode"].requiredText())
+        assertEquals("branch", response["widget"]["widgetType"].requiredText())
+        assertTrue(response["widget"]["followUpOptions"].size() >= 3)
+        assertEquals(0, recordingAiAssistantPort.recordedRequests.size)
+    }
+
+    @Test
+    fun `should keep llm path for document explanation`() {
+        val responseBody = mockMvc.perform(
+            post("/api/assistant/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "messages": [
+                        { "role": "user", "content": "Объясни, о чём эта публикация" }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val response = objectMapper.readTree(responseBody)
+        assertEquals("text", response["mode"].requiredText())
+        assertTrue(response["content"].requiredText().startsWith("Echo:"))
+        assertEquals(1, recordingAiAssistantPort.recordedRequests.size)
     }
 
     companion object {

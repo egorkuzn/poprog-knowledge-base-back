@@ -7,6 +7,10 @@ import com.example.poprogknowledgebaseback.application.assistant.AssistantDocume
 import com.example.poprogknowledgebaseback.application.assistant.AssistantDocumentRef
 import com.example.poprogknowledgebaseback.application.assistant.AssistantChatCommand
 import com.example.poprogknowledgebaseback.application.assistant.AssistantChatResult
+import com.example.poprogknowledgebaseback.application.assistant.AssistantResponseMode
+import com.example.poprogknowledgebaseback.application.assistant.AssistantWidgetActionResult
+import com.example.poprogknowledgebaseback.application.assistant.AssistantWidgetItemResult
+import com.example.poprogknowledgebaseback.application.assistant.AssistantWidgetResult
 import com.example.poprogknowledgebaseback.application.assistant.ChatHistoryMessageResult
 import com.example.poprogknowledgebaseback.application.assistant.ChatHistoryResult
 import com.example.poprogknowledgebaseback.application.assistant.ChatHistoryUseCase
@@ -95,11 +99,13 @@ class AiAssistantController(
         chatId = chatId,
         content = content,
         model = model,
+        mode = mode.name.lowercase(),
         finishReason = finishReason,
         promptTokens = promptTokens,
         completionTokens = completionTokens,
         totalTokens = totalTokens,
-        documentHints = documentHints.map { it.toDto() }
+        documentHints = documentHints.map { it.toDto() },
+        widget = widget?.toDto()
     )
 
     private fun AiAssistantDocumentRefRequest.toDomain() = AssistantDocumentRef(
@@ -120,6 +126,34 @@ class AiAssistantController(
         snippet = snippet
     )
 
+    private fun AssistantWidgetResult.toDto() = AiAssistantWidgetResponse(
+        widgetType = widgetType,
+        title = title,
+        subtitle = subtitle,
+        items = items.map { it.toDto() },
+        actions = actions.map { it.toDto() },
+        followUpOptions = followUpOptions.map { it.toDto() }
+    )
+
+    private fun AssistantWidgetItemResult.toDto() = AiAssistantWidgetItemResponse(
+        id = id,
+        title = title,
+        subtitle = subtitle,
+        meta = meta,
+        href = href,
+        prompt = prompt,
+        sourceType = sourceType,
+        sourceId = sourceId
+    )
+
+    private fun AssistantWidgetActionResult.toDto() = AiAssistantWidgetActionResponse(
+        id = id,
+        label = label,
+        kind = kind,
+        href = href,
+        prompt = prompt
+    )
+
     private fun ChatHistoryResult.toDto() = ChatHistoryResponse(
         chatId = chatId,
         messages = messages.map { it.toDto() }
@@ -129,6 +163,7 @@ class AiAssistantController(
         id = id,
         role = role.name.lowercase(),
         content = content,
+        widget = widget?.toDto(),
         createdAt = createdAt
     )
 }

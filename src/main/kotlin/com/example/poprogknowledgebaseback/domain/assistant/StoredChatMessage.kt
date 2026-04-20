@@ -8,5 +8,6 @@ data class StoredChatMessage(
     val chatId: UUID,
     val role: AiChatMessageRole,
     val content: String,
+    val widgetPayload: String? = null,
     val createdAt: Instant
 )
