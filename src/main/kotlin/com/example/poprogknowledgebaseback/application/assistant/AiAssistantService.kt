@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.core.env.Environment
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import tools.jackson.databind.ObjectMapper
 
 @Service
 @ConditionalOnProperty(name = ["app.gigachat.enabled"], havingValue = "true")
@@ -24,8 +25,10 @@ class AiAssistantService(
     private val chatConversationPersistencePort: ChatConversationPersistencePort,
     private val documentQuestionResolver: DocumentQuestionResolver,
     private val contextPromptBuilder: AssistantContextPromptBuilder,
+    private val assistantWidgetRouter: AssistantWidgetRouter,
     private val clock: Clock,
-    private val environment: Environment
+    private val environment: Environment,
+    private val objectMapper: ObjectMapper
 ) : AiAssistantUseCase {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -48,6 +51,32 @@ class AiAssistantService(
                 ownerSub = command.requesterSub
             )
         )
+
+        val widgetResponse = assistantWidgetRouter.resolve(command)
+        if (widgetResponse != null) {
+            val widgetContent = widgetResponse.subtitle ?: widgetResponse.title
+            val assistantResponse = AiAssistantResponse(
+                content = widgetContent,
+                model = "widget-router",
+                finishReason = "stop",
+                promptTokens = null,
+                completionTokens = null,
+                totalTokens = null
+            )
+            persistConversationMessages(conversation.id, command.messages, assistantResponse, widgetResponse)
+            return AssistantChatResult(
+                chatId = conversation.id,
+                content = widgetContent,
+                model = assistantResponse.model,
+                finishReason = assistantResponse.finishReason,
+                promptTokens = assistantResponse.promptTokens,
+                completionTokens = assistantResponse.completionTokens,
+                totalTokens = assistantResponse.totalTokens,
+                documentHints = emptyList(),
+                mode = AssistantResponseMode.WIDGET,
+                widget = widgetResponse
+            )
+        }
 
         val history = chatConversationPersistencePort.findMessagesByChatIdOrderByCreatedAtAscIdAsc(conversation.id)
             .map { AiChatMessage(role = it.role, content = it.content) }
@@ -82,7 +111,8 @@ class AiAssistantService(
             promptTokens = assistantResponse.promptTokens,
             completionTokens = assistantResponse.completionTokens,
             totalTokens = assistantResponse.totalTokens,
-            documentHints = documentHints.map { it.toHint() }
+            documentHints = documentHints.map { it.toHint() },
+            mode = AssistantResponseMode.TEXT
         )
     }
 
@@ -222,7 +252,8 @@ class AiAssistantService(
     private fun persistConversationMessages(
         chatId: UUID,
         requestMessages: List<AiChatMessage>,
-        assistantResponse: AiAssistantResponse
+        assistantResponse: AiAssistantResponse,
+        widgetResponse: AssistantWidgetResult? = null
     ) {
         val now = clock.instant()
         val messages = requestMessages.mapIndexed { index, message ->
@@ -236,6 +267,7 @@ class AiAssistantService(
             chatId = chatId,
             role = AiChatMessageRole.ASSISTANT,
             content = assistantResponse.content,
+            widgetPayload = widgetResponse?.let { objectMapper.writeValueAsString(it) },
             createdAt = now.plusMillis(requestMessages.size.toLong())
         )
 

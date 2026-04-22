@@ -46,6 +46,7 @@ class ChatConversationPersistenceAdapter(
         chatId = chatId,
         role = role,
         content = content,
+        widgetPayload = widgetPayload,
         createdAt = createdAt
     )
 
@@ -54,6 +55,7 @@ class ChatConversationPersistenceAdapter(
         chatId = chatId,
         role = role,
         content = content,
+        widgetPayload = widgetPayload,
         createdAt = createdAt
     )
 }

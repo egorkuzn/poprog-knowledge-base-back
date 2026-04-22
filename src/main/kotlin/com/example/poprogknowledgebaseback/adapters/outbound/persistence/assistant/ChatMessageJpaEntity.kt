@@ -25,6 +25,8 @@ class ChatMessageJpaEntity(
     val role: AiChatMessageRole,
     @Column(nullable = false, columnDefinition = "TEXT")
     val content: String,
+    @Column(name = "widget_payload", columnDefinition = "TEXT")
+    val widgetPayload: String? = null,
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant
 )
