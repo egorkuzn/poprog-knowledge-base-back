@@ -1,20 +1,26 @@
-name: Backend CI
+name: Backend CI/CD
 
 on:
   push:
     branches:
       - main
-      - master
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/poprog-knowledge-base-back
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: .
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,4 +38,75 @@ jobs:
         run: ./gradlew test --no-daemon
 
       - name: Build
-        run: ./gradlew build --no-daemon -x test
+        run: ./gradlew bootJar --no-daemon
+
+  docker-deploy:
+    needs: build-test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload compose template
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          scp -i ~/.ssh/deploy_key deploy/compose/docker-compose.prod.yml "$DEPLOY_USER@$DEPLOY_HOST:/home/$DEPLOY_USER/poprog-portal-backend/docker-compose.yml"
+
+      - name: Deploy backend only
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          IMAGE: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "BACKEND_IMAGE='$IMAGE' GHCR_USER='$GHCR_USER' GHCR_TOKEN='$GHCR_TOKEN' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd ~/poprog-portal-backend
+          test -f .env
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+          BACKEND_IMAGE="$BACKEND_IMAGE" docker compose pull portal-backend
+          BACKEND_IMAGE="$BACKEND_IMAGE" docker compose up -d portal-backend
+          docker logout ghcr.io >/dev/null
+          for attempt in $(seq 1 24); do
+            if curl -fsS http://127.0.0.1:18082/actuator/health | grep -q '"status":"UP"'; then
+              exit 0
+            fi
+            sleep 5
+          done
+          docker logs --tail=160 poprog-portal-backend >&2
+          exit 1
+          REMOTE
+
+      - name: Public smoke check
+        run: |
+          curl -fsS "http://${{ secrets.DEPLOY_HOST }}/actuator/health" | grep '"status":"UP"'
+          curl -fsS "http://${{ secrets.DEPLOY_HOST }}/api/publications/grouped" >/dev/null

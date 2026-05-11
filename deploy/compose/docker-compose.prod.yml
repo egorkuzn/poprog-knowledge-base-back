@@ -1,0 +1,32 @@
+services:
+  portal-backend:
+    image: ${BACKEND_IMAGE}
+    container_name: poprog-portal-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/poprog_kb
+      DB_USER: ${POPROG_DB_USER}
+      DB_PASSWORD: ${POPROG_DB_PASSWORD}
+      SEARCH_ENABLED: "false"
+      ELASTICSEARCH_URIS: http://elasticsearch:9200
+      FILES_STORAGE_DIR: /app/storage
+      FILES_BASE_URL: /files
+      GIGACHAT_ENABLED: "false"
+      AUTH_DEV_HEADERS_ENABLED: "true"
+    ports:
+      - "127.0.0.1:18082:8080"
+    volumes:
+      - portal_backend_storage:/app/storage
+    networks:
+      - auth_ride
+
+volumes:
+  portal_backend_storage:
+
+networks:
+  auth_ride:
+    external: true
+    name: auth-ride_default
