@@ -190,7 +190,11 @@ class ProductMetricsControllerIntegrationTest {
             """.trimIndent()
         )
 
-        val dauWauBody = mockMvc.perform(get("/api/metrics/reports/dau-wau"))
+        val dauWauBody = mockMvc.perform(
+            get("/api/metrics/reports/dau-wau")
+                .queryParam("from", "2026-04-01T00:00:00Z")
+                .queryParam("to", "2026-04-03T00:00:00Z")
+        )
             .andExpect(status().isOk)
             .andReturn()
             .response
@@ -203,7 +207,11 @@ class ProductMetricsControllerIntegrationTest {
         )
         assertEquals(2, dauWauJson["daily"][0]["uniqueUsers"].asInt())
 
-        val searchSuccessBody = mockMvc.perform(get("/api/metrics/reports/search-success"))
+        val searchSuccessBody = mockMvc.perform(
+            get("/api/metrics/reports/search-success")
+                .queryParam("from", "2026-04-01T00:00:00Z")
+                .queryParam("to", "2026-04-03T00:00:00Z")
+        )
             .andExpect(status().isOk)
             .andReturn()
             .response
@@ -215,7 +223,11 @@ class ProductMetricsControllerIntegrationTest {
         assertEquals(1, searchSuccessJson["daily"][0]["successfulCount"].asInt())
         assertEquals("50.00", searchSuccessJson["daily"][0]["searchSuccessRatePercent"].asText())
 
-        val ctrBody = mockMvc.perform(get("/api/metrics/reports/ctr"))
+        val ctrBody = mockMvc.perform(
+            get("/api/metrics/reports/ctr")
+                .queryParam("from", "2026-04-01T00:00:00Z")
+                .queryParam("to", "2026-04-03T00:00:00Z")
+        )
             .andExpect(status().isOk)
             .andReturn()
             .response
