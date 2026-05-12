@@ -71,6 +71,22 @@ class Lab19NewsService(
     }
 
     @Transactional
+    fun attachKbPublicationId(sourceUrl: String, publicationId: Long) {
+        val entity = repository.findBySourceUrl(sourceUrl) ?: return
+        entity.kbPublicationId = publicationId
+        entity.updatedAt = OffsetDateTime.now()
+        repository.save(entity)
+    }
+
+    @Transactional
+    fun attachKbStudentWorkId(sourceUrl: String, workId: Long) {
+        val entity = repository.findBySourceUrl(sourceUrl) ?: return
+        entity.kbStudentWorkId = workId
+        entity.updatedAt = OffsetDateTime.now()
+        repository.save(entity)
+    }
+
+    @Transactional
     fun reclassifyAll(): Int {
         val items = repository.findAll()
         var updated = 0
@@ -100,6 +116,8 @@ class Lab19NewsService(
         year = year,
         contentType = contentType,
         materialKind = materialKind,
+        kbPublicationId = kbPublicationId,
+        kbStudentWorkId = kbStudentWorkId,
         status = status
     )
 }

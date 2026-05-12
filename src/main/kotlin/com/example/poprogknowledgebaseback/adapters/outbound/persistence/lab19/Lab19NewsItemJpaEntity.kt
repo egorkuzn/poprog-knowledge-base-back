@@ -26,6 +26,10 @@ class Lab19NewsItemJpaEntity(
     var contentType: String?,
     @Column(name = "material_kind", nullable = false)
     var materialKind: String = "NEWS",
+    @Column(name = "kb_publication_id")
+    var kbPublicationId: Long? = null,
+    @Column(name = "kb_student_work_id")
+    var kbStudentWorkId: Long? = null,
     @Column(name = "status", nullable = false)
     var status: String,
     @Column(name = "created_at", nullable = false)

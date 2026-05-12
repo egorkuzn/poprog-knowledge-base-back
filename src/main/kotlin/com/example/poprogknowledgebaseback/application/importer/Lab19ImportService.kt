@@ -10,6 +10,8 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.UUID
 import java.util.ArrayDeque
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.text.PDFTextStripper
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -200,11 +202,12 @@ class Lab19ImportService(
         candidates.map { candidate ->
             runCatching {
                 val pdfBytes = downloadPdf(candidate.url)
+                val pdfMeta = extractPdfMeta(pdfBytes, candidate.title)
                 val metadata = PublicationUploadPayload(
                     year = candidate.year ?: DEFAULT_YEAR,
-                    authors = DEFAULT_AUTHORS,
+                    authors = pdfMeta.authors ?: DEFAULT_AUTHORS,
                     theme = candidate.title,
-                    published = buildPublishedFromSource(candidate.sourcePage)
+                    published = pdfMeta.published ?: buildPublishedFromSource(candidate.sourcePage)
                 )
                 val responseJson = postMultipart(
                     url = "$importBaseUrl/publications/upload",
@@ -213,6 +216,7 @@ class Lab19ImportService(
                     fileName = guessFileName(candidate.url)
                 )
                 val parsed = objectMapper.readValue(responseJson, PublicationUploadResponse::class.java)
+                lab19NewsService.attachKbPublicationId(candidate.url, parsed.id)
                 Lab19ImportedPublication(
                     sourceUrl = candidate.url,
                     publicationId = parsed.id,
@@ -234,11 +238,12 @@ class Lab19ImportService(
         candidates.map { candidate ->
             runCatching {
                 val pdfBytes = downloadPdf(candidate.url)
+                val pdfMeta = extractPdfMeta(pdfBytes, candidate.title)
                 val metadata = StudentWorkUploadPayload(
                     projectTypeHash = DEFAULT_STUDENT_WORK_PROJECT_HASH,
-                    authors = DEFAULT_AUTHORS,
+                    authors = pdfMeta.authors ?: DEFAULT_AUTHORS,
                     theme = candidate.title,
-                    published = buildPublishedFromSource(candidate.sourcePage)
+                    published = pdfMeta.published ?: buildPublishedFromSource(candidate.sourcePage)
                 )
                 val responseJson = postMultipart(
                     url = "$importBaseUrl/student-works/upload",
@@ -247,6 +252,7 @@ class Lab19ImportService(
                     fileName = guessFileName(candidate.url)
                 )
                 val parsed = objectMapper.readValue(responseJson, StudentWorkUploadResponse::class.java)
+                lab19NewsService.attachKbStudentWorkId(candidate.url, parsed.id)
                 Lab19ImportedStudentWork(
                     sourceUrl = candidate.url,
                     workId = parsed.id,
@@ -310,6 +316,9 @@ class Lab19ImportService(
         return response.body()
     }
 
+    // Exposed only for internal sync service (kept package-visible by Kotlin default).
+    internal fun downloadPdfForSync(url: String): ByteArray = downloadPdf(url)
+
     private fun postMultipart(
         url: String,
         metadataJson: ByteArray,
@@ -349,6 +358,71 @@ class Lab19ImportService(
         } else {
             "ИАиЭ СО РАН, лаборатория 19; источник: $normalized"
         }
+    }
+
+    internal data class PdfMeta(
+        val authors: String?,
+        val published: String?
+    )
+
+    private fun extractPdfMeta(pdfBytes: ByteArray, titleHint: String): PdfMeta {
+        return runCatching {
+            PDDocument.load(pdfBytes).use { document ->
+                val stripper = PDFTextStripper().apply {
+                    // Keep this bounded: we only need the first few pages for metadata extraction.
+                    startPage = 1
+                    endPage = minOf(3, document.numberOfPages)
+                }
+                val raw = stripper.getText(document)
+                val lines = raw
+                    .split('\n')
+                    .map { it.replace(Regex("\\s+"), " ").trim() }
+                    .filter { it.isNotBlank() }
+
+                val authors = extractAuthors(lines)
+                val published = extractPublished(lines, titleHint)
+                PdfMeta(authors = authors, published = published)
+            }
+        }.getOrElse { PdfMeta(authors = null, published = null) }
+    }
+
+    internal fun extractPdfMetaForSync(pdfBytes: ByteArray, titleHint: String): PdfMeta =
+        extractPdfMeta(pdfBytes, titleHint)
+
+    private fun extractAuthors(lines: List<String>): String? {
+        // Prefer explicit "Авторы:" markers when present.
+        lines.firstOrNull { it.startsWith("Авторы:", ignoreCase = true) }?.let { line ->
+            return line.substringAfter(':').trim().takeIf { it.isNotBlank() }
+        }
+        lines.firstOrNull { it.startsWith("Authors:", ignoreCase = true) }?.let { line ->
+            return line.substringAfter(':').trim().takeIf { it.isNotBlank() }
+        }
+
+        // Fallback: detect a line with 2+ "Surname I.O." patterns.
+        val nameRegex = Regex("([A-ZА-ЯЁ][A-Za-zА-Яа-яЁё\\-]+\\s+[A-ZА-ЯЁ]\\.?\\s*[A-ZА-ЯЁ]\\.?)")
+        return lines.asSequence()
+            .map { line -> line to nameRegex.findAll(line).map { it.value }.toList() }
+            .firstOrNull { (_, matches) -> matches.size >= 2 }
+            ?.second
+            ?.joinToString(", ")
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    private fun extractPublished(lines: List<String>, titleHint: String): String? {
+        val normalizedHint = titleHint.lowercase()
+        val hintTokens = normalizedHint
+            .split(Regex("[^a-zа-яё0-9]+"))
+            .filter { it.length >= 4 }
+            .take(6)
+
+        // Prefer citation-like lines with "//" and/or "DOI".
+        val candidates = lines.filter { it.contains("//") || it.contains("DOI", ignoreCase = true) || it.contains("10.", ignoreCase = true) }
+        val best = candidates
+            .sortedByDescending { line -> hintTokens.count { token -> line.lowercase().contains(token) } }
+            .firstOrNull()
+            ?.takeIf { it.length >= 20 }
+
+        return best
     }
 
     private fun Element.toInternalLink(sourcePage: String): DiscoveredLink? {

@@ -16,6 +16,8 @@ data class Lab19NewsItemResponse(
     val year: Int?,
     val contentType: String?,
     val materialKind: String,
+    val kbPublicationId: Long?,
+    val kbStudentWorkId: Long?,
     val status: String
 )
 
@@ -47,6 +49,8 @@ class Lab19NewsController(
                 year = it.year,
                 contentType = it.contentType,
                 materialKind = it.materialKind,
+                kbPublicationId = it.kbPublicationId,
+                kbStudentWorkId = it.kbStudentWorkId,
                 status = it.status
             )
         }

@@ -8,5 +8,7 @@ data class Lab19NewsItem(
     val year: Int?,
     val contentType: String?,
     val materialKind: String,
+    val kbPublicationId: Long?,
+    val kbStudentWorkId: Long?,
     val status: String
 )

@@ -39,3 +39,5 @@ databaseChangeLog:
       file: db/changelog/019-create-lab19-news-item-table.sql
   - include:
       file: db/changelog/020-add-material-kind-to-lab19-news-item.sql
+  - include:
+      file: db/changelog/021-add-kb-entity-refs-to-lab19-news-item.sql
