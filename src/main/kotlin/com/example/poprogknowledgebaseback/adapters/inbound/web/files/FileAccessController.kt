@@ -1,15 +1,12 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.files
 
+import com.example.poprogknowledgebaseback.application.files.FileStorageUseCase
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
-import java.nio.file.Files
-import java.nio.file.Path
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.core.io.UrlResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -21,15 +18,15 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/files")
-@Tag(name = "Файлы", description = "Публичный просмотр PDF-файлов по пути из storage")
+@Tag(name = "Файлы", description = "Публичный просмотр PDF-файлов и ресурсов меню из PostgreSQL-хранилища")
 class FileAccessController(
-    @Value("\${app.files.storage-dir}") private val storageDir: String
+    private val fileStorageUseCase: FileStorageUseCase
 ) {
 
     @GetMapping("/{*path}")
     @Operation(
         summary = "Получить PDF-файл по относительному пути",
-        description = "Публично возвращает PDF-файл из локального storage. Успешный ответ отдается как inline для просмотра в браузере."
+        description = "Публично возвращает PDF-файл из PostgreSQL-хранилища. Успешный ответ отдается как inline для просмотра в браузере."
     )
     @ApiResponses(
         value = [
@@ -58,39 +55,49 @@ class FileAccessController(
                 message = "Проверьте ссылку и повторите запрос."
             )
 
-        if (!relativePath.lowercase().endsWith(".pdf")) {
+        val normalizedLower = relativePath.lowercase()
+        if (!normalizedLower.endsWith(".pdf") && !normalizedLower.startsWith("projects-menu/")) {
             return htmlError(
                 status = HttpStatus.BAD_REQUEST,
                 title = "Неподдерживаемый тип файла",
-                message = "Сервис поддерживает только PDF-файлы."
+                message = "Сервис поддерживает PDF-документы и изображения меню проекта."
             )
         }
 
-        val storageRoot = Path.of(storageDir).toAbsolutePath().normalize()
-        val targetPath = storageRoot.resolve(relativePath).normalize()
-        if (!targetPath.startsWith(storageRoot)) {
-            return htmlError(
-                status = HttpStatus.BAD_REQUEST,
-                title = "Некорректный путь к файлу",
-                message = "Запрошенный путь содержит недопустимые сегменты."
-            )
-        }
-
-        if (!Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
+        val storedFile = fileStorageUseCase.load(relativePath) ?: run {
             return htmlError(
                 status = HttpStatus.NOT_FOUND,
                 title = "Файл не найден",
                 message = "Запрошенный PDF-файл отсутствует в хранилище."
             )
         }
+        val responseContentType = resolveContentType(relativePath, storedFile.contentType)
+            ?: return htmlError(
+                status = HttpStatus.BAD_REQUEST,
+                title = "Неподдерживаемый тип файла",
+                message = "Сервис поддерживает PDF-документы и изображения меню проекта."
+            )
 
-        val resource = UrlResource(targetPath.toUri())
-        val fileName = targetPath.fileName.toString()
         return ResponseEntity
             .ok()
-            .contentType(MediaType.APPLICATION_PDF)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"$fileName\"")
-            .body(resource)
+            .contentType(responseContentType)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"${storedFile.fileName}\"")
+            .header(HttpHeaders.CACHE_CONTROL, "public, max-age=3600")
+            .header("X-Content-SHA256", storedFile.sha256)
+            .contentLength(storedFile.sizeBytes)
+            .body(storedFile.content)
+    }
+
+    private fun resolveContentType(relativePath: String, storedContentType: String): MediaType? {
+        if (relativePath.lowercase().endsWith(".pdf")) {
+            return MediaType.APPLICATION_PDF
+        }
+
+        if (!relativePath.startsWith("projects-menu/") || !storedContentType.lowercase().startsWith("image/")) {
+            return null
+        }
+
+        return runCatching { MediaType.parseMediaType(storedContentType) }.getOrNull()
     }
 
     private fun normalizePath(input: String): String? {

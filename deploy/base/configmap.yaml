@@ -8,4 +8,4 @@ data:
   ELASTICSEARCH_URIS: "http://elasticsearch:9200"
   SEARCH_ENABLED: "true"
   FILES_STORAGE_DIR: "/app/storage"
-  FILES_BASE_URL: "/files"
+  FILES_BASE_URL: "/api/files"

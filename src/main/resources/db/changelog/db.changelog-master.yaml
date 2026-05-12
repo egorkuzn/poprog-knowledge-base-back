@@ -33,3 +33,9 @@ databaseChangeLog:
       file: db/changelog/016-create-product-metric-event-table.sql
   - include:
       file: db/changelog/017-add-widget-payload-to-chat-message.sql
+  - include:
+      file: db/changelog/018-create-stored-file-table.sql
+  - include:
+      file: db/changelog/019-create-lab19-news-item-table.sql
+  - include:
+      file: db/changelog/020-add-material-kind-to-lab19-news-item.sql

@@ -182,6 +182,9 @@ class ProductMetricsService(
     }
 
     private fun findInRange(from: OffsetDateTime?, to: OffsetDateTime?): List<ProductMetricEventJpaEntity> {
+        if (from == null && to == null) {
+            return repository.findAll().sortedBy { it.timestampServer }
+        }
         val normalizedTo = to ?: OffsetDateTime.now(clock)
         val normalizedFrom = from ?: normalizedTo.minusDays(30)
         return repository.findAll()

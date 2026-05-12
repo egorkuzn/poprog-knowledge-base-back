@@ -311,7 +311,7 @@ class ProjectMenuControllerIntegrationTest {
 
         val upload = objectMapper.readTree(uploadResponseBody)
         val resourceUrl = upload["resourceUrl"].requiredText()
-        assertTrue(resourceUrl.startsWith("/files/projects-menu/"))
+        assertTrue(resourceUrl.startsWith("/api/files/projects-menu/"))
 
         val menuResponseBody = mockMvc.perform(get("/api/projects/menu"))
             .andExpect(status().isOk)

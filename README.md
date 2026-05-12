@@ -170,7 +170,7 @@ kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 
 - `GET /api/files/{path}`
 
-`GET /api/files/{path}` — публичная ручка получения PDF-файлов по относительному пути в storage (например, `publications/<file>.pdf` или `student-works/<file>.pdf`). При успехе файл отдается с `Content-Disposition: inline`, чтобы его можно было открыть в браузере.
+`GET /api/files/{path}` — публичная ручка получения PDF-файлов и изображений меню проекта по относительному пути в PostgreSQL-хранилище (например, `publications/<file>.pdf`, `student-works/<file>.pdf` или `projects-menu/<file>.png`). При успехе файл отдается с `Content-Disposition: inline`, чтобы его можно было открыть в браузере.
 
 ### Обратная связь
 

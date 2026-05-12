@@ -30,6 +30,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.apache.pdfbox:pdfbox:2.0.30")
+	implementation("org.jsoup:jsoup:1.18.3")
+	implementation("org.reactivestreams:reactive-streams:1.0.4")
 	implementation("org.liquibase:liquibase-core")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
@@ -51,4 +53,7 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	// PDFBox maintains a disk font cache under user.home. On some machines it can become huge/corrupted
+	// and trigger OOM during tests. Use an isolated per-build home directory for deterministic runs.
+	systemProperty("user.home", file("${buildDir}/test-home").absolutePath)
 }

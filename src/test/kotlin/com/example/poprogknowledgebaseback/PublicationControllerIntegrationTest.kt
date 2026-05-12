@@ -150,7 +150,7 @@ class PublicationControllerIntegrationTest {
 
         val created = objectMapper.readTree(responseBody)
         assertEquals(2026, created["year"].asInt())
-        assertTrue(created["link"].requiredText().startsWith("/files/publications/"))
+        assertTrue(created["link"].requiredText().startsWith("/api/files/publications/"))
     }
 
     @Test
@@ -216,7 +216,7 @@ class PublicationControllerIntegrationTest {
             .contentAsString
 
         val link = objectMapper.readTree(responseBody)["link"].requiredText()
-        val relativePath = link.removePrefix("/files/").trimStart('/')
+        val relativePath = link.removePrefix("/api/files/").trimStart('/')
 
         mockMvc.perform(get("/api/files/$relativePath"))
             .andExpect(status().isOk)

@@ -22,6 +22,9 @@ bin/
 # Logs
 *.log
 
+# Local file storage
+storage/
+
 # Local environment
 .env
 .env.*
