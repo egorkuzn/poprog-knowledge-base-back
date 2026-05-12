@@ -10,9 +10,11 @@ import com.example.poprogknowledgebaseback.domain.search.port.SearchIndexPort
 import com.example.poprogknowledgebaseback.domain.studentwork.StudentWork
 import com.example.poprogknowledgebaseback.domain.studentwork.port.StudentWorkPersistencePort
 import jakarta.annotation.PostConstruct
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(name = ["app.search.enabled"], havingValue = "true", matchIfMissing = true)
 class SearchService(
     private val searchIndexPort: SearchIndexPort,
     private val searchChunkIndexingService: SearchChunkIndexingService,
