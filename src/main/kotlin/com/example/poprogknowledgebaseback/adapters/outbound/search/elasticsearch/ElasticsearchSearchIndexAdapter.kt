@@ -9,40 +9,54 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.elasticsearch.client.elc.NativeQuery
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 @Component
 @ConditionalOnProperty(name = ["app.search.enabled"], havingValue = "true", matchIfMissing = true)
 class ElasticsearchSearchIndexAdapter(
-    private val repository: SearchDocumentRepository,
     private val operations: ElasticsearchOperations
 ) : SearchIndexPort {
+
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    private val indexCoordinates = IndexCoordinates.of("knowledge_search")
 
     companion object {
         private const val MIN_PARTIAL_QUERY_LENGTH = 3
     }
 
     override fun replaceAll(items: List<SearchItem>) {
-        val indexCoordinates = IndexCoordinates.of("knowledge_search")
-
-        if (operations.indexOps(indexCoordinates).exists()) {
-            operations.indexOps(indexCoordinates).delete()
+        runCatching {
+            if (operations.indexOps(indexCoordinates).exists()) {
+                operations.indexOps(indexCoordinates).delete()
+            }
+            operations.indexOps(SearchDocument::class.java).create()
+            operations.indexOps(SearchDocument::class.java).putMapping()
+            items.forEach { operations.save(it.toDocument(), indexCoordinates) }
+            operations.indexOps(indexCoordinates).refresh()
+        }.onFailure { error ->
+            logger.warn("Search index rebuild skipped: Elasticsearch unavailable or misconfigured", error)
         }
-
-        operations.indexOps(SearchDocument::class.java).create()
-        operations.indexOps(SearchDocument::class.java).putMapping()
-
-        repository.saveAll(items.map { it.toDocument() })
     }
 
     override fun index(item: SearchItem) {
-        ensureIndex()
-        repository.save(item.toDocument())
+        runCatching {
+            ensureIndex()
+            operations.save(item.toDocument(), indexCoordinates)
+            operations.indexOps(indexCoordinates).refresh()
+        }.onFailure { error ->
+            logger.warn("Search indexing skipped for item {}", item.id, error)
+        }
     }
 
     override fun delete(id: String) {
-        if (operations.indexOps(IndexCoordinates.of("knowledge_search")).exists()) {
-            repository.deleteById(id)
+        runCatching {
+            if (operations.indexOps(indexCoordinates).exists()) {
+                operations.delete(id, indexCoordinates)
+            }
+        }.onFailure { error ->
+            logger.warn("Search deletion skipped for id {}", id, error)
         }
     }
 
@@ -91,9 +105,14 @@ class ElasticsearchSearchIndexAdapter(
             .withPageable(PageRequest.of(0, limit))
             .build()
 
-        return operations.search(nativeQuery, SearchDocument::class.java)
-            .searchHits
-            .map { it.content.toDomain() }
+        return runCatching {
+            operations.search(nativeQuery, SearchDocument::class.java)
+                .searchHits
+                .map { it.content.toDomain() }
+        }.getOrElse { error ->
+            logger.warn("Search query failed against Elasticsearch", error)
+            emptyList()
+        }
     }
 
     private fun ensureIndex() {

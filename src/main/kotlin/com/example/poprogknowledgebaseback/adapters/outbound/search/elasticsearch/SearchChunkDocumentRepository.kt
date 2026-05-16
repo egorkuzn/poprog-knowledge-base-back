@@ -1,5 +1,0 @@
-package com.example.poprogknowledgebaseback.adapters.outbound.search.elasticsearch
-
-import org.springframework.data.elasticsearch.repository.ElasticsearchRepository
-
-interface SearchChunkDocumentRepository : ElasticsearchRepository<SearchChunkDocument, String>

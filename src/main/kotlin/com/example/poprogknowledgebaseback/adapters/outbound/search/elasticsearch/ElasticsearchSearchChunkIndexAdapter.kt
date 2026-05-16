@@ -10,30 +10,37 @@ import org.springframework.data.domain.Sort
 import org.springframework.data.elasticsearch.client.elc.NativeQuery
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 @Component
 @ConditionalOnProperty(name = ["app.search.enabled"], havingValue = "true", matchIfMissing = true)
 class ElasticsearchSearchChunkIndexAdapter(
-    private val repository: SearchChunkDocumentRepository,
     private val operations: ElasticsearchOperations
 ) : SearchChunkIndexPort {
+
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
         private const val MIN_PARTIAL_QUERY_LENGTH = 3
     }
 
     override fun replaceAll(chunks: List<SearchChunk>) {
-        val indexCoordinates = IndexCoordinates.of("knowledge_chunks")
+        runCatching {
+            val indexCoordinates = IndexCoordinates.of("knowledge_chunks")
 
-        if (operations.indexOps(indexCoordinates).exists()) {
-            operations.indexOps(indexCoordinates).delete()
+            if (operations.indexOps(indexCoordinates).exists()) {
+                operations.indexOps(indexCoordinates).delete()
+            }
+
+            operations.indexOps(SearchChunkDocument::class.java).create()
+            operations.indexOps(SearchChunkDocument::class.java).putMapping()
+
+            chunks.forEach { operations.save(it.toDocument(), indexCoordinates) }
+            operations.indexOps(indexCoordinates).refresh()
+        }.onFailure { error ->
+            logger.warn("Search chunk index rebuild skipped: Elasticsearch unavailable or misconfigured", error)
         }
-
-        operations.indexOps(SearchChunkDocument::class.java).create()
-        operations.indexOps(SearchChunkDocument::class.java).putMapping()
-
-        repository.saveAll(chunks.map { it.toDocument() })
     }
 
     override fun index(chunks: List<SearchChunk>) {
@@ -41,36 +48,44 @@ class ElasticsearchSearchChunkIndexAdapter(
             return
         }
 
-        ensureIndex()
-        repository.saveAll(chunks.map { it.toDocument() })
+        runCatching {
+            ensureIndex()
+            val indexCoordinates = IndexCoordinates.of("knowledge_chunks")
+            chunks.forEach { operations.save(it.toDocument(), indexCoordinates) }
+            operations.indexOps(indexCoordinates).refresh()
+        }.onFailure { error ->
+            logger.warn("Search chunk indexing skipped", error)
+        }
     }
 
     override fun deleteBySource(sourceType: SearchSourceType, sourceId: Long) {
-        val indexCoordinates = IndexCoordinates.of("knowledge_chunks")
-        if (!operations.indexOps(indexCoordinates).exists()) {
-            return
-        }
+        runCatching {
+            val indexCoordinates = IndexCoordinates.of("knowledge_chunks")
+            if (!operations.indexOps(indexCoordinates).exists()) {
+                return
+            }
 
-        val query = NativeQuery.builder()
-            .withQuery { q ->
-                q.bool { bool ->
-                    bool.filter { filter ->
-                        filter.term { term -> term.field("sourceType").value(sourceType.name) }
-                    }.filter { filter ->
-                        filter.term { term -> term.field("sourceId").value(sourceId) }
+            val query = NativeQuery.builder()
+                .withQuery { q ->
+                    q.bool { bool ->
+                        bool.filter { filter ->
+                            filter.term { term -> term.field("sourceType").value(sourceType.name) }
+                        }.filter { filter ->
+                            filter.term { term -> term.field("sourceId").value(sourceId) }
+                        }
                     }
                 }
-            }
-            .build()
+                .build()
 
-        val idsToDelete = operations.search(query, SearchChunkDocument::class.java, indexCoordinates)
-            .searchHits
-            .mapNotNull { it.id }
-
-        if (idsToDelete.isNotEmpty()) {
-            repository.deleteAllById(idsToDelete)
+            operations.search(query, SearchChunkDocument::class.java, indexCoordinates)
+                .searchHits
+                .mapNotNull { it.id }
+                .forEach { operations.delete(it, indexCoordinates) }
+        }.onFailure { error ->
+            logger.warn("Search chunk deletion skipped for {} {}", sourceType, sourceId, error)
         }
     }
+
 
     override fun search(
         query: String,
@@ -133,9 +148,14 @@ class ElasticsearchSearchChunkIndexAdapter(
             .withPageable(PageRequest.of(0, limit))
             .build()
 
-        return operations.search(nativeQuery, SearchChunkDocument::class.java)
-            .searchHits
-            .map { it.content.toDomain() }
+        return runCatching {
+            operations.search(nativeQuery, SearchChunkDocument::class.java)
+                .searchHits
+                .map { it.content.toDomain() }
+        }.getOrElse { error ->
+            logger.warn("Search chunk query failed against Elasticsearch", error)
+            emptyList()
+        }
     }
 
     override fun findBySource(sourceType: SearchSourceType, sourceId: Long, limit: Int): List<SearchChunk> {
@@ -153,9 +173,14 @@ class ElasticsearchSearchChunkIndexAdapter(
             .withPageable(PageRequest.of(0, limit))
             .build()
 
-        return operations.search(nativeQuery, SearchChunkDocument::class.java)
-            .searchHits
-            .map { it.content.toDomain() }
+        return runCatching {
+            operations.search(nativeQuery, SearchChunkDocument::class.java)
+                .searchHits
+                .map { it.content.toDomain() }
+        }.getOrElse { error ->
+            logger.warn("Search chunk lookup failed for {} {}", sourceType, sourceId, error)
+            emptyList()
+        }
     }
 
     private fun ensureIndex() {
