@@ -12,7 +12,7 @@ import org.springframework.web.server.ResponseStatusException
 
 @Component
 class CurrentUserArgumentResolver(
-    private val currentUserProvider: CurrentUserProvider
+    private val currentUserProviders: List<CurrentUserProvider>
 ) : HandlerMethodArgumentResolver {
 
     override fun supportsParameter(parameter: MethodParameter): Boolean =
@@ -30,11 +30,11 @@ class CurrentUserArgumentResolver(
         val request = webRequest.getNativeRequest(HttpServletRequest::class.java)
             ?: error("HttpServletRequest is required")
 
-        val user = currentUserProvider.resolveOrNull(request)
+        val user = currentUserProviders.firstNotNullOfOrNull { it.resolveOrNull(request) }
         if (user == null && annotation.required) {
             throw ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
-                "Authentication headers are required in local/dev mode"
+                "Authentication is required"
             )
         }
         return user

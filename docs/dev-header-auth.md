@@ -1,6 +1,6 @@
 # Dev Header Auth (local fallback)
 
-This project supports a local development fallback authentication that reads user identity from HTTP headers.
+This project supports Keycloak JWT authentication and a local development fallback authentication that reads user identity from HTTP headers.
 
 ## Purpose
 
@@ -9,11 +9,32 @@ This project supports a local development fallback authentication that reads use
 
 ## Security model
 
+- Keycloak JWT auth is enabled with `app.auth.keycloak.enabled=true`;
+- Keycloak tokens are read from `Authorization: Bearer <access_token>`;
 - disabled by default (`app.auth.dev-headers.enabled=false`);
 - enabled in local profile (`application-local.properties`);
 - hard-blocked outside allowed profiles (`local`, `dev`) even if someone enables the flag.
 
-## Headers
+## Keycloak JWT mode
+
+Configure the backend with:
+
+- `KEYCLOAK_AUTH_ENABLED=true`
+- `KEYCLOAK_ISSUER_URI=http://95.174.95.251/realms/reflex-ide`
+- `KEYCLOAK_JWK_SET_URI=http://95.174.95.251/realms/reflex-ide/protocol/openid-connect/certs`
+- `KEYCLOAK_CLIENT_ID=reflex-web-client`
+- `KEYCLOAK_REQUIRED_AUDIENCE=reflex-web-client`
+
+The backend maps:
+
+- `sub` -> `CurrentUser.subject`
+- `email` -> `CurrentUser.email`
+- `name` or `preferred_username` -> `CurrentUser.name`
+- `realm_access.roles` and `resource_access[client-id].roles` -> `CurrentUser.roles`
+
+Every authenticated Keycloak user receives the local `USER` role. Admin endpoints require `ADMIN`.
+
+## Dev headers
 
 - `subject` (required)
 - `email` (optional)

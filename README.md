@@ -131,7 +131,7 @@ ghcr.io/egorkuzn/poprog-knowledge-base-back:latest
 Ключевые runtime-переменные:
 
 ```text
-SPRING_PROFILES_ACTIVE=dev
+SPRING_PROFILES_ACTIVE=prod
 DB_URL=jdbc:postgresql://postgres:5432/poprog_kb
 DB_USER=${POPROG_DB_USER}
 DB_PASSWORD=${POPROG_DB_PASSWORD}
@@ -140,7 +140,12 @@ ELASTICSEARCH_URIS=http://elasticsearch:9200
 FILES_STORAGE_DIR=/app/storage
 FILES_BASE_URL=/files
 GIGACHAT_ENABLED=false
-AUTH_DEV_HEADERS_ENABLED=true
+KEYCLOAK_AUTH_ENABLED=true
+KEYCLOAK_ISSUER_URI=http://95.174.95.251/realms/reflex-ide
+KEYCLOAK_JWK_SET_URI=http://95.174.95.251/realms/reflex-ide/protocol/openid-connect/certs
+KEYCLOAK_CLIENT_ID=reflex-web-client
+KEYCLOAK_REQUIRED_AUDIENCE=reflex-web-client
+AUTH_DEV_HEADERS_ENABLED=false
 ```
 
 PostgreSQL переиспользуется из существующей docker-сети. Elasticsearch считается опциональной подсистемой: если индекс недоступен, backend продолжает обслуживать основные API, а поиск использует fallback по PostgreSQL.
@@ -308,12 +313,20 @@ kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 - `GET /api/account/profile`
 - `PUT /api/account/profile`
 
-`/api/account/*` требует авторизацию. Пока Keycloak недоступен локально, можно использовать dev-заголовки (только для local/dev при `app.auth.dev-headers.enabled=true`):
+`/api/account/*` требует авторизацию. В production backend принимает `Authorization: Bearer <access_token>` от Keycloak и извлекает из JWT `sub`, `email`, `name`/`preferred_username`, роли realm/client. Для локальной разработки можно использовать dev-заголовки (только для local/dev при `app.auth.dev-headers.enabled=true`):
 
 - `subject` (обязательный)
 - `email` (опциональный)
 - `name` (опциональный)
 - `roles` (опциональный, пример: `USER,ADMIN`)
+
+Для Keycloak-интеграции используются переменные:
+
+- `KEYCLOAK_AUTH_ENABLED`
+- `KEYCLOAK_ISSUER_URI`
+- `KEYCLOAK_JWK_SET_URI`
+- `KEYCLOAK_CLIENT_ID`
+- `KEYCLOAK_REQUIRED_AUDIENCE`
 
 `GET /api/projects/menu` возвращает полную структуру hover-меню раздела "Проекты": секции, CTA, карточки направлений и промо-блоки.
 
