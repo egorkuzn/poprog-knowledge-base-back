@@ -436,7 +436,8 @@ class Lab19ImportService(
             idx to (score * 1000 + span.length)
         }
         val bestIndex = scored.maxBy { it.second }.first
-        return buildCitationSpanFallback(lines, bestIndex).takeIf { it.length >= 20 }
+        val normalized = buildCitationSpanFallback(lines, bestIndex)
+        return normalized.takeIf { looksLikeCitation(it) }
     }
 
     private fun extractFromPublicationList(lines: List<String>, hintTokens: List<String>): String? {
@@ -464,7 +465,8 @@ class Lab19ImportService(
             .let { (block, score) -> if (score <= 0) null else block }
             ?: return null
 
-        return normalizeCitation(best)
+        val normalized = normalizeCitation(best)
+        return normalized.takeIf { looksLikeCitation(it) }
     }
 
     private fun splitNumberedBlocks(lines: List<String>): List<String> {
@@ -516,7 +518,8 @@ class Lab19ImportService(
         }
         val joined = lines.subList(start, end + 1)
             .joinToString(" ") { it.trim() }
-        return normalizeCitation(joined)
+        val normalized = normalizeCitation(joined)
+        return normalized
     }
 
     private fun normalizeCitation(raw: String): String =
@@ -526,6 +529,16 @@ class Lab19ImportService(
             .removePrefix("Публикации:")
             .replace(Regex("^\\d+\\s*", RegexOption.IGNORE_CASE), "")
             .trim()
+
+    private fun looksLikeCitation(value: String): Boolean {
+        val normalized = value.trim()
+        if (normalized.length < 25) return false
+        // Strong markers for bibliographic strings.
+        if (normalized.contains("//")) return true
+        if (normalized.contains("DOI", ignoreCase = true)) return true
+        if (Regex("\\b(19|20)\\d{2}\\b").containsMatchIn(normalized) && normalized.contains("–")) return true
+        return false
+    }
 
     private fun extractYear(published: String?, urlHint: String?): Int? {
         val yearRegex = Regex("(19|20)\\d{2}")
