@@ -33,7 +33,7 @@ class StudentWorkService(
                         WorkModel(
                             id = it.id ?: error("Student work id is missing"),
                             authors = it.authors,
-                            theme = it.theme,
+                            theme = normalizeWorkTheme(it.theme),
                             published = it.published
                         )
                     }
@@ -102,8 +102,29 @@ class StudentWorkService(
         projectTypeTitle = projectTypeTitle,
         projectTypeHash = projectTypeHash,
         authors = authors,
-        theme = theme,
+        theme = normalizeWorkTheme(theme),
         published = published,
         documentLink = documentLink
     )
+
+    private fun normalizeWorkTheme(value: String): String {
+        var s = value.replace(Regex("\\s+"), " ").trim()
+        // Remove obvious artifacts from file naming / scraping.
+        s = s.replace(Regex("\\s*\\((pdf|PDF)\\)\\s*$"), "")
+            .replace(Regex("\\s*\\[\\s*(pdf|PDF)\\s*\\]\\s*$"), "")
+            .replace(Regex("\\s*\\.pdf\\s*$", RegexOption.IGNORE_CASE), "")
+            .trim()
+
+        // If we have a Russian title followed by an English translation, keep only the Russian part.
+        // Heuristic: first Latin letter that appears after any Cyrillic letters.
+        val hasCyr = s.any { it in 'А'..'я' || it == 'ё' || it == 'Ё' }
+        if (hasCyr) {
+            val firstLatin = s.indexOfFirst { it in 'A'..'Z' || it in 'a'..'z' }
+            if (firstLatin in 10..(s.length - 5)) {
+                s = s.substring(0, firstLatin).trim().trimEnd('-', '–', ':', ';', ',', '.').trim()
+            }
+        }
+
+        return s.ifBlank { value.trim() }
+    }
 }

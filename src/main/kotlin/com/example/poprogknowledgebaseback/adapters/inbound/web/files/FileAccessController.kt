@@ -1,5 +1,6 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.files
 
+import com.example.poprogknowledgebaseback.application.files.StoredFileReadService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -8,10 +9,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import java.nio.file.Files
 import java.nio.file.Path
+import java.text.Normalizer
+import java.util.Locale
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.UrlResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.ContentDisposition
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -23,7 +27,8 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/files")
 @Tag(name = "Файлы", description = "Публичный просмотр PDF-файлов по пути из storage")
 class FileAccessController(
-    @Value("\${app.files.storage-dir}") private val storageDir: String
+    @Value("\${app.files.storage-dir}") private val storageDir: String,
+    private val storedFileReadService: StoredFileReadService
 ) {
 
     @GetMapping("/{*path}")
@@ -66,6 +71,23 @@ class FileAccessController(
             )
         }
 
+        // Prefer DB-backed files to make deployments/migrations reliable.
+        val segments = relativePath.split('/')
+        if (segments.size >= 2) {
+            val category = segments.first()
+            val storedFilename = segments.drop(1).joinToString("/")
+            storedFileReadService.findContent(category = category, storedFilename = storedFilename)?.let { stored ->
+                val fileName = safeAsciiFileName(stored.storedFilename)
+                val headers = HttpHeaders()
+                headers.contentDisposition = ContentDisposition.inline().filename(fileName).build()
+                return ResponseEntity
+                    .ok()
+                    .headers(headers)
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(stored.bytes)
+            }
+        }
+
         val storageRoot = Path.of(storageDir).toAbsolutePath().normalize()
         val targetPath = storageRoot.resolve(relativePath).normalize()
         if (!targetPath.startsWith(storageRoot)) {
@@ -85,11 +107,14 @@ class FileAccessController(
         }
 
         val resource = UrlResource(targetPath.toUri())
-        val fileName = targetPath.fileName.toString()
+        val fileName = safeAsciiFileName(targetPath.fileName.toString())
+        val headers = HttpHeaders()
+        // Avoid non-ASCII filenames in headers (Tomcat will fail to encode them).
+        headers.contentDisposition = ContentDisposition.inline().filename(fileName).build()
         return ResponseEntity
             .ok()
             .contentType(MediaType.APPLICATION_PDF)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"$fileName\"")
+            .headers(headers)
             .body(resource)
     }
 
@@ -105,6 +130,24 @@ class FileAccessController(
         }
 
         return normalized
+    }
+
+    private fun safeAsciiFileName(input: String): String {
+        val normalized = Normalizer.normalize(input, Normalizer.Form.NFKD)
+        val ascii = buildString {
+            for (ch in normalized) {
+                when {
+                    ch.code in 0x20..0x7E -> append(ch)
+                    else -> append('_')
+                }
+            }
+        }
+            .replace(Regex("\\s+"), "_")
+            .replace(Regex("_+"), "_")
+            .trim('_')
+            .lowercase(Locale.ROOT)
+            .ifBlank { "file.pdf" }
+        return if (ascii.endsWith(".pdf")) ascii else "$ascii.pdf"
     }
 
     private fun htmlError(status: HttpStatus, title: String, message: String): ResponseEntity<String> {

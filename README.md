@@ -93,16 +93,146 @@ docker compose up -d
 
 ## Deployment
 
-Deployment-конфигурация хранится прямо в этом репозитории, в каталоге [deploy](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy).
+Deployment-конфигурация хранится в репозиториях приложения и описывает как локальный контейнерный запуск backend, так и production-поставку на виртуальную машину. Подробное описание deployment-контура, требований и текст для дипломного отчета вынесены в общий документ:
 
-Что там есть:
+- [docs/deployment-production-report.md](docs/deployment-production-report.md)
 
-- [Dockerfile](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/Dockerfile) для сборки образа приложения
-- [deploy/base](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy/base) с базовыми Kubernetes manifests
-- [deploy/overlays/dev](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy/overlays/dev) с примером overlay для dev
-- [deploy/README.md](/Users/egorkuznecov/IdeaProjects/poprog-knowledge-base-back/deploy/README.md) с краткой инструкцией
+### Production-схема
 
-Минимальный сценарий:
+Production-развертывание выполнено на виртуальной машине `poprog-edge`, которая принимает публичный HTTP-трафик. На машине установлен `nginx`, работающий как reverse proxy. Внешний пользователь открывает портал по корневому адресу `http://95.174.95.251/`, а nginx перенаправляет запросы во внутренние контейнеры:
+
+- frontend: `127.0.0.1:18083`;
+- backend: `127.0.0.1:18082`;
+- Keycloak/Auth routes: `127.0.0.1:8080`;
+- backend API: `/api/` и `/portal-api/`;
+- файлы: `/files/`;
+- health checks: `/actuator/`;
+- OpenAPI: `/swagger-ui/` и `/v3/`.
+
+Маршруты `/portal` и `/portal/...` оставлены только как redirect на корневые URL, чтобы старые ссылки не ломались. Основной портал должен открываться без технического префикса `/portal`.
+
+### Backend-контейнер
+
+Backend собирается в Docker-образ из [Dockerfile](Dockerfile) и публикуется в GitHub Container Registry:
+
+```text
+ghcr.io/egorkuzn/poprog-knowledge-base-back:<commit-sha>
+ghcr.io/egorkuzn/poprog-knowledge-base-back:latest
+```
+
+На сервере backend запускается через [deploy/compose/docker-compose.prod.yml](deploy/compose/docker-compose.prod.yml). Compose-файл:
+
+- запускает сервис `portal-backend`;
+- подключает контейнер к docker-сети `auth-ride_default`;
+- пробрасывает порт контейнера `8080` только на локальный адрес `127.0.0.1:18082`;
+- подключает volume `portal_backend_storage` для загруженных файлов;
+- берет чувствительные параметры из `.env`, который хранится на сервере и не коммитится.
+
+Ключевые runtime-переменные:
+
+```text
+SPRING_PROFILES_ACTIVE=dev
+DB_URL=jdbc:postgresql://postgres:5432/poprog_kb
+DB_USER=${POPROG_DB_USER}
+DB_PASSWORD=${POPROG_DB_PASSWORD}
+SEARCH_ENABLED=true
+ELASTICSEARCH_URIS=http://elasticsearch:9200
+FILES_STORAGE_DIR=/app/storage
+FILES_BASE_URL=/files
+GIGACHAT_ENABLED=false
+AUTH_DEV_HEADERS_ENABLED=true
+```
+
+PostgreSQL переиспользуется из существующей docker-сети. Elasticsearch считается опциональной подсистемой: если индекс недоступен, backend продолжает обслуживать основные API, а поиск использует fallback по PostgreSQL.
+
+### CI/CD
+
+Для backend используется workflow [.github/workflows/backend-ci.yml](.github/workflows/backend-ci.yml).
+
+При pull request выполняется:
+
+```bash
+./gradlew test --no-daemon
+./gradlew bootJar --no-daemon
+```
+
+При push в `main` выполняется production-деплой:
+
+1. GitHub Actions собирает Docker-образ.
+2. Образ публикуется в GHCR с тегами commit SHA и `latest`.
+3. Workflow готовит SSH-доступ через `DEPLOY_SSH_PRIVATE_KEY`.
+4. На сервер загружается актуальный `docker-compose.yml`.
+5. Сервер выполняет `docker compose pull portal-backend`.
+6. Старый контейнер `poprog-portal-backend` удаляется.
+7. Новый контейнер запускается через `docker compose up -d portal-backend`.
+8. Workflow ожидает успешный ответ `http://127.0.0.1:18082/actuator/health`.
+9. Выполняется публичная smoke-проверка через `http://<host>/actuator/health` и `http://<host>/api/publications/grouped`.
+
+Секреты, которые нужны workflow:
+
+- `DEPLOY_HOST`;
+- `DEPLOY_USER`;
+- `DEPLOY_SSH_PRIVATE_KEY`;
+- стандартный `GITHUB_TOKEN` для публикации образа в GHCR.
+
+Пароли базы данных и runtime-секреты остаются в `.env` на сервере. Workflow проверяет наличие `.env`, но не выводит его содержимое.
+
+### Требования к deployment-контуру
+
+Функциональные требования высокого приоритета:
+
+- портал должен открываться по корневому адресу без `/portal`;
+- backend API должен быть доступен через nginx по `/api/` и `/portal-api/`;
+- файлы PDF должны отдаваться через `/files/`;
+- frontend и backend должны деплоиться независимо;
+- после деплоя должен выполняться health check;
+- основные API должны работать даже при недоступности Elasticsearch;
+- backend должен автоматически применять Liquibase-миграции при старте.
+
+Функциональные требования среднего приоритета:
+
+- Docker-образы должны публиковаться в GHCR;
+- каждый образ должен иметь тег commit SHA;
+- старые `/portal/...` ссылки должны перенаправляться на новые маршруты;
+- OpenAPI-документация должна быть доступна через nginx;
+- загруженные файлы должны сохраняться между перезапусками контейнера.
+
+Нефункциональные требования:
+
+- секреты не должны храниться в git;
+- внешние запросы должны проходить через nginx, а контейнеры должны слушать только локальные порты;
+- деплой должен перезапускать только измененный сервис;
+- CI/CD должен останавливать поставку при ошибке тестов или health check;
+- при ошибке деплоя workflow должен выводить последние логи backend-контейнера;
+- система должна быть пригодна для малоресурсных виртуальных машин.
+
+### Контроль после деплоя
+
+```bash
+curl -fsS http://95.174.95.251/actuator/health
+curl -fsS http://95.174.95.251/api/publications/grouped
+curl -fsS http://95.174.95.251/api/student-works/grouped
+curl -fsS "http://95.174.95.251/api/search?q=post&limit=8"
+```
+
+На сервере:
+
+```bash
+docker ps
+docker logs --tail=160 poprog-portal-backend
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### Kubernetes manifests
+
+В каталоге [deploy](deploy) также сохранены Kubernetes-манифесты:
+
+- [deploy/base](deploy/base) с базовыми manifests;
+- [deploy/overlays/dev](deploy/overlays/dev) с dev overlay;
+- [deploy/base/secret.example.yaml](deploy/base/secret.example.yaml) как шаблон секрета.
+
+Минимальный сценарий для Kubernetes:
 
 ```bash
 docker build -t poprog-knowledge-base-back:local .
@@ -110,12 +240,7 @@ kubectl apply -k deploy/overlays/dev
 kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 ```
 
-Важно:
-
-- манифесты предполагают, что PostgreSQL и Elasticsearch уже существуют в кластере
-- `deploy/overlays/dev` сам создаёт namespace `poprog-dev`
-- секреты intentionally не хранятся в git в “боевом” виде
-- образ в manifests нужно привязывать к реальному тегу через CI/CD или overlay
+Манифесты предполагают, что PostgreSQL и Elasticsearch уже существуют в кластере. Production на текущем сервере использует Docker Compose, а Kubernetes-конфигурация оставлена как воспроизводимая альтернатива для следующего этапа развития инфраструктуры.
 
 ## Основные ручки
 
