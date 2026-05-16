@@ -4,12 +4,6 @@ import com.example.poprogknowledgebaseback.adapters.outbound.persistence.files.S
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-data class StoredFileContent(
-    val storedFilename: String,
-    val contentType: String,
-    val bytes: ByteArray
-)
-
 @Service
 class StoredFileReadService(
     private val repository: SpringDataStoredFileRepository
@@ -18,10 +12,11 @@ class StoredFileReadService(
     fun findContent(category: String, storedFilename: String): StoredFileContent? {
         val entity = repository.findByCategoryAndStoredFilename(category, storedFilename) ?: return null
         return StoredFileContent(
-            storedFilename = entity.storedFilename,
+            fileName = entity.originalFilename,
             contentType = entity.contentType,
-            bytes = entity.content
+            sizeBytes = entity.sizeBytes,
+            sha256 = entity.sha256,
+            content = entity.content
         )
     }
 }
-

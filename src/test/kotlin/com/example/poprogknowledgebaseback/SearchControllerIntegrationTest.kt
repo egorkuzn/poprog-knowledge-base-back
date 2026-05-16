@@ -121,7 +121,7 @@ class SearchControllerIntegrationTest {
                 authors = "PDF Author",
                 theme = "PDF Theme",
                 published = "PDF Published",
-                link = "/files/publications/${pdfPath.fileName}"
+                link = "/api/files/publications/${pdfPath.fileName}"
             )
         )
 

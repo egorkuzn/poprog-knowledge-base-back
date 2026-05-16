@@ -1,6 +1,7 @@
 package com.example.poprogknowledgebaseback.application.search
 
 import com.example.poprogknowledgebaseback.application.files.FileStoragePathResolver
+import com.example.poprogknowledgebaseback.application.files.FileStorageUseCase
 import com.example.poprogknowledgebaseback.application.files.PdfTextExtractor
 import com.example.poprogknowledgebaseback.domain.publication.Publication
 import com.example.poprogknowledgebaseback.domain.publication.port.PublicationPersistencePort
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service
 @Service
 class PdfIndexingService(
     private val fileStoragePathResolver: FileStoragePathResolver,
+    private val fileStorageUseCase: FileStorageUseCase,
     private val pdfTextExtractor: PdfTextExtractor,
     private val publicationPersistencePort: PublicationPersistencePort,
     private val studentWorkPersistencePort: StudentWorkPersistencePort,
@@ -48,6 +50,11 @@ class PdfIndexingService(
         val normalizedLink = link?.trim().orEmpty()
         if (normalizedLink.isBlank() || !normalizedLink.lowercase().endsWith(".pdf")) {
             return null
+        }
+
+        val storedContent = fileStorageUseCase.loadFromUrl(normalizedLink)
+        if (storedContent != null) {
+            return pdfTextExtractor.extractText(storedContent.content)
         }
 
         val localPath = fileStoragePathResolver.resolveLocalPath(normalizedLink) ?: return null

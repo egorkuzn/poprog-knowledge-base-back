@@ -1,21 +1,17 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.files
 
-import com.example.poprogknowledgebaseback.application.files.StoredFileReadService
+import com.example.poprogknowledgebaseback.application.files.FileStorageUseCase
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
-import java.nio.file.Files
-import java.nio.file.Path
 import java.text.Normalizer
 import java.util.Locale
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.core.io.UrlResource
+import org.springframework.http.ContentDisposition
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
-import org.springframework.http.ContentDisposition
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -25,23 +21,22 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/files")
-@Tag(name = "Файлы", description = "Публичный просмотр PDF-файлов по пути из storage")
+@Tag(name = "Файлы", description = "Публичный просмотр PDF-файлов и ресурсов меню из файлового хранилища")
 class FileAccessController(
-    @Value("\${app.files.storage-dir}") private val storageDir: String,
-    private val storedFileReadService: StoredFileReadService
+    private val fileStorageUseCase: FileStorageUseCase
 ) {
 
     @GetMapping("/{*path}")
     @Operation(
-        summary = "Получить PDF-файл по относительному пути",
-        description = "Публично возвращает PDF-файл из локального storage. Успешный ответ отдается как inline для просмотра в браузере."
+        summary = "Получить файл по относительному пути",
+        description = "Публично возвращает PDF-файл или изображение меню проекта. Успешный ответ отдается как inline для просмотра в браузере."
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "PDF-файл успешно найден и отдан",
-                content = [Content(mediaType = MediaType.APPLICATION_PDF_VALUE, schema = Schema(type = "string", format = "binary"))]
+                description = "Файл успешно найден и отдан",
+                content = [Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE, schema = Schema(type = "string", format = "binary"))]
             ),
             ApiResponse(
                 responseCode = "400",
@@ -63,59 +58,56 @@ class FileAccessController(
                 message = "Проверьте ссылку и повторите запрос."
             )
 
-        if (!relativePath.lowercase().endsWith(".pdf")) {
+        if (!isSupportedPath(relativePath)) {
             return htmlError(
                 status = HttpStatus.BAD_REQUEST,
                 title = "Неподдерживаемый тип файла",
-                message = "Сервис поддерживает только PDF-файлы."
+                message = "Сервис поддерживает PDF-документы и изображения меню проекта."
             )
         }
 
-        // Prefer DB-backed files to make deployments/migrations reliable.
-        val segments = relativePath.split('/')
-        if (segments.size >= 2) {
-            val category = segments.first()
-            val storedFilename = segments.drop(1).joinToString("/")
-            storedFileReadService.findContent(category = category, storedFilename = storedFilename)?.let { stored ->
-                val fileName = safeAsciiFileName(stored.storedFilename)
-                val headers = HttpHeaders()
-                headers.contentDisposition = ContentDisposition.inline().filename(fileName).build()
-                return ResponseEntity
-                    .ok()
-                    .headers(headers)
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(stored.bytes)
-            }
-        }
+        val storedFile = fileStorageUseCase.load(relativePath) ?: return htmlError(
+            status = HttpStatus.NOT_FOUND,
+            title = "Файл не найден",
+            message = "Запрошенный файл отсутствует в хранилище."
+        )
 
-        val storageRoot = Path.of(storageDir).toAbsolutePath().normalize()
-        val targetPath = storageRoot.resolve(relativePath).normalize()
-        if (!targetPath.startsWith(storageRoot)) {
-            return htmlError(
+        val responseContentType = resolveContentType(relativePath, storedFile.contentType)
+            ?: return htmlError(
                 status = HttpStatus.BAD_REQUEST,
-                title = "Некорректный путь к файлу",
-                message = "Запрошенный путь содержит недопустимые сегменты."
+                title = "Неподдерживаемый тип файла",
+                message = "Сервис поддерживает PDF-документы и изображения меню проекта."
             )
-        }
 
-        if (!Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
-            return htmlError(
-                status = HttpStatus.NOT_FOUND,
-                title = "Файл не найден",
-                message = "Запрошенный PDF-файл отсутствует в хранилище."
-            )
-        }
-
-        val resource = UrlResource(targetPath.toUri())
-        val fileName = safeAsciiFileName(targetPath.fileName.toString())
         val headers = HttpHeaders()
-        // Avoid non-ASCII filenames in headers (Tomcat will fail to encode them).
-        headers.contentDisposition = ContentDisposition.inline().filename(fileName).build()
+        headers.contentDisposition = ContentDisposition.inline().filename(safeAsciiFileName(storedFile.fileName, relativePath)).build()
+        headers.cacheControl = "public, max-age=3600"
+        headers.add("X-Content-SHA256", storedFile.sha256)
+
         return ResponseEntity
             .ok()
-            .contentType(MediaType.APPLICATION_PDF)
             .headers(headers)
-            .body(resource)
+            .contentType(responseContentType)
+            .contentLength(storedFile.sizeBytes)
+            .body(storedFile.content)
+    }
+
+    private fun isSupportedPath(relativePath: String): Boolean {
+        val normalizedLower = relativePath.lowercase(Locale.ROOT)
+        return normalizedLower.endsWith(".pdf") || normalizedLower.startsWith("projects-menu/")
+    }
+
+    private fun resolveContentType(relativePath: String, storedContentType: String): MediaType? {
+        val normalizedLower = relativePath.lowercase(Locale.ROOT)
+        if (normalizedLower.endsWith(".pdf")) {
+            return MediaType.APPLICATION_PDF
+        }
+
+        if (!normalizedLower.startsWith("projects-menu/") || !storedContentType.lowercase(Locale.ROOT).startsWith("image/")) {
+            return null
+        }
+
+        return runCatching { MediaType.parseMediaType(storedContentType) }.getOrNull()
     }
 
     private fun normalizePath(input: String): String? {
@@ -132,7 +124,8 @@ class FileAccessController(
         return normalized
     }
 
-    private fun safeAsciiFileName(input: String): String {
+    private fun safeAsciiFileName(input: String, relativePath: String): String {
+        val fallbackExtension = relativePath.substringAfterLast('.', missingDelimiterValue = "").takeIf { it.isNotBlank() }
         val normalized = Normalizer.normalize(input, Normalizer.Form.NFKD)
         val ascii = buildString {
             for (ch in normalized) {
@@ -146,8 +139,12 @@ class FileAccessController(
             .replace(Regex("_+"), "_")
             .trim('_')
             .lowercase(Locale.ROOT)
-            .ifBlank { "file.pdf" }
-        return if (ascii.endsWith(".pdf")) ascii else "$ascii.pdf"
+            .ifBlank { "file" }
+
+        if ('.' in ascii || fallbackExtension == null) {
+            return ascii
+        }
+        return "$ascii.$fallbackExtension"
     }
 
     private fun htmlError(status: HttpStatus, title: String, message: String): ResponseEntity<String> {

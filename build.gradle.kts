@@ -31,6 +31,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 	implementation("org.apache.pdfbox:pdfbox:2.0.30")
+	implementation("org.jsoup:jsoup:1.18.3")
+	implementation("org.reactivestreams:reactive-streams:1.0.4")
 	implementation("org.liquibase:liquibase-core")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
@@ -54,4 +56,6 @@ kotlin {
 tasks.withType<Test> {
 	useJUnitPlatform()
 	maxHeapSize = "2g"
+	// PDFBox maintains a disk font cache under user.home; isolate it for deterministic CI runs.
+	systemProperty("user.home", layout.buildDirectory.dir("test-home").get().asFile.absolutePath)
 }

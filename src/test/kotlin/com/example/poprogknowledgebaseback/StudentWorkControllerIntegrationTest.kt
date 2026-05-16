@@ -150,7 +150,7 @@ class StudentWorkControllerIntegrationTest {
 
         val created = objectMapper.readTree(responseBody)
         assertEquals("industrial-c", created["hash"].requiredText())
-        assertTrue(created["documentLink"].requiredText().startsWith("/files/student-works/"))
+        assertTrue(created["documentLink"].requiredText().startsWith("/api/files/student-works/"))
     }
 
     @Test

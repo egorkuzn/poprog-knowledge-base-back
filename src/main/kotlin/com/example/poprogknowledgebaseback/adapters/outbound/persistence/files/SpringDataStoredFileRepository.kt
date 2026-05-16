@@ -7,4 +7,3 @@ interface SpringDataStoredFileRepository : JpaRepository<StoredFileJpaEntity, UU
     fun findByCategoryAndStoredFilename(category: String, storedFilename: String): StoredFileJpaEntity?
     fun findByCategoryAndSha256(category: String, sha256: String): StoredFileJpaEntity?
 }
-

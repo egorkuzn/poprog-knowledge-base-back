@@ -3,6 +3,7 @@ package com.example.poprogknowledgebaseback.adapters.outbound.persistence.studen
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.data.domain.Pageable
 
 interface SpringDataStudentWorkRepository : JpaRepository<StudentWorkJpaEntity, Long> {
 
@@ -19,4 +20,18 @@ interface SpringDataStudentWorkRepository : JpaRepository<StudentWorkJpaEntity, 
         where sw.id = :id
     """)
     fun findByIdWithProjectType(@Param("id") id: Long): StudentWorkJpaEntity?
+
+    @Query(
+        """
+        select sw from StudentWorkJpaEntity sw
+        where sw.theme = :theme
+          and lower(cast(sw.published as string)) like lower(concat('%', cast(:sourcePage as string), '%'))
+        order by sw.id desc
+        """
+    )
+    fun findByThemeAndPublishedContains(
+        @Param("theme") theme: String,
+        @Param("sourcePage") sourcePage: String,
+        pageable: Pageable
+    ): List<StudentWorkJpaEntity>
 }
