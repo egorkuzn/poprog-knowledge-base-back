@@ -35,3 +35,5 @@ databaseChangeLog:
       file: db/changelog/017-add-widget-payload-to-chat-message.sql
   - include:
       file: db/changelog/018-create-stored-file-table.sql
+  - include:
+      file: db/changelog/019-fix-publication-13-doi.sql
