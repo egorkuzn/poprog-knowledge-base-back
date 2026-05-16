@@ -20,3 +20,16 @@ data class UpdateAccountProfileRequest(
     @field:Size(max = 254)
     val email: String
 )
+
+data class RegisterAccountRequest(
+    @field:NotBlank
+    @field:Size(max = 120)
+    val name: String,
+    @field:NotBlank
+    @field:Email
+    @field:Size(max = 254)
+    val email: String,
+    @field:NotBlank
+    @field:Size(min = 8, max = 128)
+    val password: String
+)

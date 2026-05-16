@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface SpringDataUserAccountRepository : JpaRepository<UserAccountJpaEntity, Long> {
     fun findByKeycloakSub(keycloakSub: String): Optional<UserAccountJpaEntity>
+    fun findByEmail(email: String): Optional<UserAccountJpaEntity>
 }
