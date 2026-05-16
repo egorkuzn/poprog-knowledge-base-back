@@ -16,11 +16,11 @@ services:
       FILES_BASE_URL: /files
       GIGACHAT_ENABLED: "false"
       KEYCLOAK_AUTH_ENABLED: ${KEYCLOAK_AUTH_ENABLED:-true}
-      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://95.174.95.251}
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://95.174.95.251/realms/reflex-ide}
-      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://95.174.95.251/realms/reflex-ide/protocol/openid-connect/certs}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-reflex-ide}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-reflex-web-client}
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8080}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://95.174.95.251/realms/poprog-portal}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/poprog-portal/protocol/openid-connect/certs}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-poprog-portal}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-poprog-portal-frontend}
       KEYCLOAK_REQUIRED_AUDIENCE: ${KEYCLOAK_REQUIRED_AUDIENCE:-}
       KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_ADMIN_REALM:-master}
       KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-admin-cli}
