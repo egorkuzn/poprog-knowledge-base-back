@@ -141,10 +141,16 @@ FILES_STORAGE_DIR=/app/storage
 FILES_BASE_URL=/files
 GIGACHAT_ENABLED=false
 KEYCLOAK_AUTH_ENABLED=true
+KEYCLOAK_BASE_URL=http://95.174.95.251
 KEYCLOAK_ISSUER_URI=http://95.174.95.251/realms/reflex-ide
 KEYCLOAK_JWK_SET_URI=http://95.174.95.251/realms/reflex-ide/protocol/openid-connect/certs
+KEYCLOAK_REALM=reflex-ide
 KEYCLOAK_CLIENT_ID=reflex-web-client
 KEYCLOAK_REQUIRED_AUDIENCE=reflex-web-client
+KEYCLOAK_ADMIN_REALM=master
+KEYCLOAK_ADMIN_CLIENT_ID=admin-cli
+KEYCLOAK_ADMIN_USERNAME=${KEYCLOAK_ADMIN_USERNAME}
+KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
 AUTH_DEV_HEADERS_ENABLED=false
 ```
 
@@ -325,8 +331,15 @@ kubectl apply -n poprog-dev -f deploy/base/secret.example.yaml
 - `KEYCLOAK_AUTH_ENABLED`
 - `KEYCLOAK_ISSUER_URI`
 - `KEYCLOAK_JWK_SET_URI`
+- `KEYCLOAK_REALM`
 - `KEYCLOAK_CLIENT_ID`
 - `KEYCLOAK_REQUIRED_AUDIENCE`
+- `KEYCLOAK_ADMIN_REALM`
+- `KEYCLOAK_ADMIN_CLIENT_ID`
+- `KEYCLOAK_ADMIN_USERNAME`
+- `KEYCLOAK_ADMIN_PASSWORD`
+
+`POST /api/account/register` создает пользователя в Keycloak через Admin API и сохраняет локальный профиль портала. Новые пользователи получают роль `USER`; административные роли назначаются отдельно в Keycloak.
 
 `GET /api/projects/menu` возвращает полную структуру hover-меню раздела "Проекты": секции, CTA, карточки направлений и промо-блоки.
 

@@ -2,6 +2,8 @@ package com.example.poprogknowledgebaseback.adapters.inbound.web.account
 
 import com.example.poprogknowledgebaseback.application.account.AccountProfileResult
 import com.example.poprogknowledgebaseback.application.account.AccountProfileService
+import com.example.poprogknowledgebaseback.application.account.KeycloakAccountRegistrationService
+import com.example.poprogknowledgebaseback.application.account.RegisterAccountCommand
 import com.example.poprogknowledgebaseback.application.account.UpdateAccountProfileCommand
 import com.example.poprogknowledgebaseback.adapters.inbound.web.auth.CurrentUser
 import com.example.poprogknowledgebaseback.adapters.inbound.web.auth.CurrentUserParam
@@ -13,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -24,8 +27,37 @@ import org.springframework.http.HttpStatus
 @RequestMapping("/api/account")
 @Tag(name = "Личный кабинет", description = "Операции профиля текущего пользователя")
 class AccountController(
-    private val accountProfileService: AccountProfileService
+    private val accountProfileService: AccountProfileService,
+    private val keycloakAccountRegistrationService: KeycloakAccountRegistrationService
 ) {
+
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(
+        summary = "Создать учетную запись пользователя",
+        description = "Создает пользователя в Keycloak realm портала и сохраняет локальный профиль."
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Учетная запись успешно создана",
+                content = [Content(schema = Schema(implementation = AccountProfileResponse::class))]
+            ),
+            ApiResponse(responseCode = "400", description = "Некорректные входные данные"),
+            ApiResponse(responseCode = "409", description = "Пользователь уже существует"),
+            ApiResponse(responseCode = "503", description = "Регистрация через Keycloak не настроена")
+        ]
+    )
+    fun register(@Valid @RequestBody request: RegisterAccountRequest): AccountProfileResponse {
+        return keycloakAccountRegistrationService.register(
+            RegisterAccountCommand(
+                name = request.name,
+                email = request.email,
+                password = request.password
+            )
+        ).toDto()
+    }
 
     @GetMapping("/profile")
     @Operation(

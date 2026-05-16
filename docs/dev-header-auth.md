@@ -22,8 +22,13 @@ Configure the backend with:
 - `KEYCLOAK_AUTH_ENABLED=true`
 - `KEYCLOAK_ISSUER_URI=http://95.174.95.251/realms/reflex-ide`
 - `KEYCLOAK_JWK_SET_URI=http://95.174.95.251/realms/reflex-ide/protocol/openid-connect/certs`
+- `KEYCLOAK_REALM=reflex-ide`
 - `KEYCLOAK_CLIENT_ID=reflex-web-client`
 - `KEYCLOAK_REQUIRED_AUDIENCE=reflex-web-client`
+- `KEYCLOAK_ADMIN_REALM=master`
+- `KEYCLOAK_ADMIN_CLIENT_ID=admin-cli`
+- `KEYCLOAK_ADMIN_USERNAME=<admin>`
+- `KEYCLOAK_ADMIN_PASSWORD=<password>`
 
 The backend maps:
 
@@ -33,6 +38,8 @@ The backend maps:
 - `realm_access.roles` and `resource_access[client-id].roles` -> `CurrentUser.roles`
 
 Every authenticated Keycloak user receives the local `USER` role. Admin endpoints require `ADMIN`.
+
+`POST /api/account/register` uses Keycloak Admin API to create a user in the portal realm. The backend stores only the created Keycloak user id, name and email; it does not store the password locally.
 
 ## Dev headers
 

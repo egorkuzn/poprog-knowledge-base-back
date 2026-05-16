@@ -73,7 +73,8 @@ Backend-контейнер запускается через `deploy/compose/doc
 - `ELASTICSEARCH_URIS=http://elasticsearch:9200` оставлен как адрес полнотекстового индекса;
 - `GIGACHAT_ENABLED=false` отключает внешнюю LLM-интеграцию в production-сборке до полной настройки секретов;
 - `KEYCLOAK_AUTH_ENABLED=true` включает проверку JWT-токенов Keycloak;
-- `KEYCLOAK_ISSUER_URI`, `KEYCLOAK_JWK_SET_URI`, `KEYCLOAK_CLIENT_ID` и `KEYCLOAK_REQUIRED_AUDIENCE` описывают realm и client портала;
+- `KEYCLOAK_ISSUER_URI`, `KEYCLOAK_JWK_SET_URI`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` и `KEYCLOAK_REQUIRED_AUDIENCE` описывают realm и client портала;
+- `KEYCLOAK_ADMIN_REALM`, `KEYCLOAK_ADMIN_CLIENT_ID`, `KEYCLOAK_ADMIN_USERNAME` и `KEYCLOAK_ADMIN_PASSWORD` используются только backend-сервисом для создания новых учетных записей через Keycloak Admin API;
 - `AUTH_DEV_HEADERS_ENABLED=false` отключает тестовую авторизацию через заголовки в production.
 
 Во время эксплуатации была обнаружена проблема: при недоступности DNS-имени `elasticsearch` backend не поднимался, и nginx отдавал `502 Bad Gateway` на `/api/*`. Для устранения этой проблемы была изменена стратегия поиска. Теперь backend не зависит жестко от Spring Data Elasticsearch repositories на этапе старта. Поисковые адаптеры используют `ElasticsearchOperations` и обрабатывают недоступность индекса как деградацию функциональности, а не как критическую ошибку запуска приложения. Дополнительно реализован fallback-поиск по PostgreSQL, поэтому базовый поиск по публикациям и студенческим работам продолжает работать даже без Elasticsearch.
