@@ -73,7 +73,8 @@ class KeycloakJwtCurrentUserProvider(
             return
         }
 
-        if (!jwt.audience.contains(requiredAudience)) {
+        val authorizedParty = jwt.claimAsString("azp")
+        if (!jwt.audience.contains(requiredAudience) && authorizedParty != requiredAudience) {
             throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Access token audience is not allowed")
         }
     }

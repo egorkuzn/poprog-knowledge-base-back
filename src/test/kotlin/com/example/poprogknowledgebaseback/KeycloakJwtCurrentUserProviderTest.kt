@@ -97,6 +97,40 @@ class KeycloakJwtCurrentUserProviderTest {
         }
     }
 
+    @Test
+    fun `should accept token when authorized party matches required audience`() {
+        val rsaKey = generateRsaKey()
+        MockWebServer().use { server ->
+            server.enqueue(jwksResponse(rsaKey))
+            server.start()
+
+            val provider = KeycloakJwtCurrentUserProvider(
+                AuthKeycloakProperties().apply {
+                    enabled = true
+                    jwkSetUri = server.url("/certs").toString()
+                    requiredAudience = "reflex-web-client"
+                }
+            )
+            val token = encodeJwt(
+                rsaKey = rsaKey,
+                audience = listOf("account"),
+                claims = mapOf(
+                    "sub" to "user-azp",
+                    "azp" to "reflex-web-client"
+                )
+            )
+            val request = MockHttpServletRequest().apply {
+                addHeader(HttpHeaders.AUTHORIZATION, "Bearer $token")
+            }
+
+            val user = provider.resolveOrNull(request)
+
+            checkNotNull(user)
+            assertEquals("user-azp", user.subject)
+        }
+    }
+
+
     private fun generateRsaKey(): RSAKey {
         val keyPair = KeyPairGenerator.getInstance("RSA").apply {
             initialize(2048)

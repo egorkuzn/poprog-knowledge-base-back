@@ -54,6 +54,9 @@ class KeycloakAdminRestClientTest {
             val createBody = createRequest.body.readUtf8()
             assertTrue(createBody.contains("portal-user@example.com"))
             assertTrue(createBody.contains("password123"))
+            assertTrue(createBody.contains(""""emailVerified":true"""))
+            assertTrue(createBody.contains(""""firstName":"Portal""""))
+            assertTrue(createBody.contains(""""lastName":"User""""))
         }
     }
 

@@ -108,9 +108,10 @@ class KeycloakAdminRestClient(
     private fun RegisterAccountCommand.toKeycloakUserPayload() = KeycloakCreateUserRequest(
         username = email,
         email = email,
-        firstName = name,
+        firstName = name.firstName(),
+        lastName = name.lastName(),
         enabled = true,
-        emailVerified = false,
+        emailVerified = true,
         credentials = listOf(
             KeycloakCredentialRequest(
                 type = "password",
@@ -119,6 +120,12 @@ class KeycloakAdminRestClient(
             )
         )
     )
+
+    private fun String.firstName(): String =
+        trim().split(Regex("\\s+"), limit = 2).firstOrNull().orEmpty().ifBlank { trim() }
+
+    private fun String.lastName(): String =
+        trim().split(Regex("\\s+"), limit = 2).getOrNull(1).orEmpty()
 
     @Suppress("unused")
     private data class KeycloakTokenResponse(
@@ -132,6 +139,7 @@ class KeycloakAdminRestClient(
         val username: String,
         val email: String,
         val firstName: String,
+        val lastName: String,
         val enabled: Boolean,
         val emailVerified: Boolean,
         val credentials: List<KeycloakCredentialRequest>
