@@ -97,24 +97,21 @@ class SearchService(
         }
     }
 
-    override fun search(query: String, limit: Int): List<SearchResult> =
-        if (query.trim().length < MIN_SEARCH_QUERY_LENGTH) {
-            emptyList()
-        } else {
-            searchIndexPort.search(query = query.trim(), limit = limit).map {
-            SearchResult(
-                id = it.id,
-                type = it.sourceType.name.lowercase(),
-                sourceId = it.sourceId,
-                groupTitle = it.groupTitle,
-                groupHash = it.groupHash,
-                authors = it.authors,
-                theme = it.theme,
-                published = it.published,
-                link = it.link
-            )
+    override fun search(query: String, limit: Int): List<SearchResult> {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+            return emptyList()
         }
+
+        val indexedResults = searchIndexPort.search(query = trimmedQuery, limit = limit).map {
+            it.toSearchResult()
         }
+        if (indexedResults.isNotEmpty()) {
+            return indexedResults
+        }
+
+        return searchInRelationalStorage(trimmedQuery, limit)
+    }
 
     override fun indexPublication(publication: Publication) {
         searchIndexPort.index(publication.toSearchItem())
@@ -161,6 +158,59 @@ class SearchService(
         link = documentLink,
         pdfText = pdfText
     )
+
+    private fun SearchItem.toSearchResult() = SearchResult(
+        id = id,
+        type = sourceType.name.lowercase(),
+        sourceId = sourceId,
+        groupTitle = groupTitle,
+        groupHash = groupHash,
+        authors = authors,
+        theme = theme,
+        published = published,
+        link = link
+    )
+
+    private fun searchInRelationalStorage(query: String, limit: Int): List<SearchResult> {
+        val normalizedQuery = query.lowercase()
+        val tokens = normalizedQuery.split(Regex("\\s+")).filter { it.length >= MIN_SEARCH_QUERY_LENGTH }
+        if (tokens.isEmpty()) {
+            return emptyList()
+        }
+
+        val publications = publicationPersistencePort.findAllOrderByYearDescIdAsc()
+            .asSequence()
+            .filter { it.matchesSearch(tokens) }
+            .map { it.toSearchItem().toSearchResult() }
+
+        val studentWorks = studentWorkPersistencePort.findAllOrdered()
+            .asSequence()
+            .filter { it.matchesSearch(tokens) }
+            .map { it.toSearchItem().toSearchResult() }
+
+        return (publications + studentWorks)
+            .take(limit)
+            .toList()
+    }
+
+    private fun Publication.matchesSearch(tokens: List<String>): Boolean {
+        val haystack = listOf(authors, theme, published, year.toString(), pdfText.orEmpty())
+            .joinToString(" ")
+            .lowercase()
+        return tokens.all { haystack.contains(it) }
+    }
+
+    private fun StudentWork.matchesSearch(tokens: List<String>): Boolean {
+        val haystack = listOf(
+            authors,
+            theme,
+            published,
+            projectTypeTitle,
+            projectTypeHash,
+            pdfText.orEmpty()
+        ).joinToString(" ").lowercase()
+        return tokens.all { haystack.contains(it) }
+    }
 
     private fun resolvePdfText(
         existing: String?,
