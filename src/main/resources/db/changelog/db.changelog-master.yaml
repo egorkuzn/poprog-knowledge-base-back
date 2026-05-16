@@ -33,3 +33,5 @@ databaseChangeLog:
       file: db/changelog/016-create-product-metric-event-table.sql
   - include:
       file: db/changelog/017-add-widget-payload-to-chat-message.sql
+  - include:
+      file: db/changelog/018-create-stored-file-table.sql
