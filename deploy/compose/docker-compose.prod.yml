@@ -10,7 +10,7 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/poprog_kb
       DB_USER: ${POPROG_DB_USER}
       DB_PASSWORD: ${POPROG_DB_PASSWORD}
-      SEARCH_ENABLED: "false"
+      SEARCH_ENABLED: "true"
       ELASTICSEARCH_URIS: http://elasticsearch:9200
       FILES_STORAGE_DIR: /app/storage
       FILES_BASE_URL: /files
