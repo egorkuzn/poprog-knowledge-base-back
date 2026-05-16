@@ -202,9 +202,9 @@ class Lab19ImportService(
         candidates.map { candidate ->
             runCatching {
                 val pdfBytes = downloadPdf(candidate.url)
-                val pdfMeta = extractPdfMeta(pdfBytes, candidate.title)
+                val pdfMeta = extractPdfMeta(pdfBytes, candidate.title, candidate.url)
                 val metadata = PublicationUploadPayload(
-                    year = candidate.year ?: DEFAULT_YEAR,
+                    year = pdfMeta.year ?: candidate.year ?: DEFAULT_YEAR,
                     authors = pdfMeta.authors ?: DEFAULT_AUTHORS,
                     theme = candidate.title,
                     published = pdfMeta.published ?: buildPublishedFromSource(candidate.sourcePage)
@@ -238,7 +238,7 @@ class Lab19ImportService(
         candidates.map { candidate ->
             runCatching {
                 val pdfBytes = downloadPdf(candidate.url)
-                val pdfMeta = extractPdfMeta(pdfBytes, candidate.title)
+                val pdfMeta = extractPdfMeta(pdfBytes, candidate.title, candidate.url)
                 val metadata = StudentWorkUploadPayload(
                     projectTypeHash = DEFAULT_STUDENT_WORK_PROJECT_HASH,
                     authors = pdfMeta.authors ?: DEFAULT_AUTHORS,
@@ -362,10 +362,11 @@ class Lab19ImportService(
 
     internal data class PdfMeta(
         val authors: String?,
-        val published: String?
+        val published: String?,
+        val year: Int?
     )
 
-    private fun extractPdfMeta(pdfBytes: ByteArray, titleHint: String): PdfMeta {
+    private fun extractPdfMeta(pdfBytes: ByteArray, titleHint: String, urlHint: String? = null): PdfMeta {
         return runCatching {
             PDDocument.load(pdfBytes).use { document ->
                 val stripper = PDFTextStripper().apply {
@@ -381,13 +382,14 @@ class Lab19ImportService(
 
                 val authors = extractAuthors(lines)
                 val published = extractPublished(lines, titleHint)
-                PdfMeta(authors = authors, published = published)
+                val year = extractYear(published, urlHint)
+                PdfMeta(authors = authors, published = published, year = year)
             }
-        }.getOrElse { PdfMeta(authors = null, published = null) }
+        }.getOrElse { PdfMeta(authors = null, published = null, year = null) }
     }
 
-    internal fun extractPdfMetaForSync(pdfBytes: ByteArray, titleHint: String): PdfMeta =
-        extractPdfMeta(pdfBytes, titleHint)
+    internal fun extractPdfMetaForSync(pdfBytes: ByteArray, titleHint: String, urlHint: String?): PdfMeta =
+        extractPdfMeta(pdfBytes, titleHint, urlHint)
 
     private fun extractAuthors(lines: List<String>): String? {
         // Prefer explicit "Авторы:" markers when present.
@@ -415,14 +417,125 @@ class Lab19ImportService(
             .filter { it.length >= 4 }
             .take(6)
 
-        // Prefer citation-like lines with "//" and/or "DOI".
-        val candidates = lines.filter { it.contains("//") || it.contains("DOI", ignoreCase = true) || it.contains("10.", ignoreCase = true) }
-        val best = candidates
-            .sortedByDescending { line -> hintTokens.count { token -> line.lowercase().contains(token) } }
-            .firstOrNull()
-            ?.takeIf { it.length >= 20 }
+        extractFromPublicationList(lines, hintTokens)?.let { return it }
 
-        return best
+        // Fallback: citation-like spans with "//" and/or "DOI" nearby.
+        val candidateIndexes = lines.withIndex()
+            .filter { (_, line) ->
+                line.contains("//") || line.contains("DOI", ignoreCase = true) || line.contains("10.", ignoreCase = true)
+            }
+            .map { it.index }
+
+        if (candidateIndexes.isEmpty()) {
+            return null
+        }
+
+        val scored = candidateIndexes.map { idx ->
+            val span = buildCitationSpanFallback(lines, idx)
+            val score = hintTokens.count { token -> span.lowercase().contains(token) }
+            idx to (score * 1000 + span.length)
+        }
+        val bestIndex = scored.maxBy { it.second }.first
+        return buildCitationSpanFallback(lines, bestIndex).takeIf { it.length >= 20 }
+    }
+
+    private fun extractFromPublicationList(lines: List<String>, hintTokens: List<String>): String? {
+        val pubStartIndex = lines.indexOfFirst { it.equals("Публикации:", ignoreCase = true) || it.startsWith("Публикации:", ignoreCase = true) }
+        if (pubStartIndex < 0) {
+            return null
+        }
+
+        val tail = lines.drop(pubStartIndex)
+            .filterNot {
+                it.startsWith("Авторы:", ignoreCase = true) ||
+                    it.startsWith("Authors:", ignoreCase = true) ||
+                    it.matches(Regex("^\\d+\\s+Авторы:.*", RegexOption.IGNORE_CASE)) ||
+                    it.matches(Regex("^\\d+\\s+Authors:.*", RegexOption.IGNORE_CASE))
+            }
+
+        val blocks = splitNumberedBlocks(tail)
+        if (blocks.isEmpty()) {
+            return null
+        }
+
+        val best = blocks
+            .map { block -> block to hintTokens.count { token -> block.lowercase().contains(token) } }
+            .maxBy { (_, score) -> score }
+            .let { (block, score) -> if (score <= 0) null else block }
+            ?: return null
+
+        return normalizeCitation(best)
+    }
+
+    private fun splitNumberedBlocks(lines: List<String>): List<String> {
+        val startRegex = Regex("^\\d+\\.")
+        val blocks = mutableListOf<String>()
+        val current = mutableListOf<String>()
+        lines.forEach { line ->
+            if (startRegex.containsMatchIn(line)) {
+                if (current.isNotEmpty()) {
+                    blocks += current.joinToString(" ")
+                    current.clear()
+                }
+            }
+            if (line.startsWith("Публикации:", ignoreCase = true)) {
+                return@forEach
+            }
+            current += line
+        }
+        if (current.isNotEmpty()) {
+            blocks += current.joinToString(" ")
+        }
+        return blocks.map { it.trim() }.filter { it.isNotBlank() }
+    }
+
+    private fun buildCitationSpanFallback(lines: List<String>, index: Int): String {
+        val dropPrefixes = setOf("Авторы:", "Authors:", "Публикации:", "Publication", "Publications:")
+        val startRegex = Regex("^\\d+\\.")
+        var start = index
+        while (start > 0) {
+            val prev = lines[start - 1]
+            if (prev.isBlank() || dropPrefixes.any { prev.startsWith(it, ignoreCase = true) }) {
+                break
+            }
+            if (startRegex.containsMatchIn(prev)) {
+                start--
+                break
+            }
+            start--
+            if (index - start >= 3) break
+        }
+        var end = index
+        while (end < lines.lastIndex) {
+            val next = lines[end + 1]
+            if (next.isBlank() || dropPrefixes.any { next.startsWith(it, ignoreCase = true) } || startRegex.containsMatchIn(next)) {
+                break
+            }
+            end++
+            if (end - index >= 3) break
+        }
+        val joined = lines.subList(start, end + 1)
+            .joinToString(" ") { it.trim() }
+        return normalizeCitation(joined)
+    }
+
+    private fun normalizeCitation(raw: String): String =
+        raw
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .removePrefix("Публикации:")
+            .replace(Regex("^\\d+\\s*", RegexOption.IGNORE_CASE), "")
+            .trim()
+
+    private fun extractYear(published: String?, urlHint: String?): Int? {
+        val yearRegex = Regex("(19|20)\\d{2}")
+        val fromPublished = published?.let { yearRegex.find(it)?.value?.toIntOrNull() }
+        if (fromPublished != null) {
+            return fromPublished
+        }
+        // Fallback: year in URL path segments (e.g. /2025/filename.pdf).
+        val fromUrl = urlHint?.let { yearRegex.find(it)?.value?.toIntOrNull() }
+        return fromUrl
     }
 
     private fun Element.toInternalLink(sourcePage: String): DiscoveredLink? {

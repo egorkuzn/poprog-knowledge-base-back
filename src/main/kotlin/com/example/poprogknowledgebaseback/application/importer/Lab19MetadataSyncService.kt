@@ -61,15 +61,19 @@ class Lab19MetadataSyncService(
                 errors += "download failed: $sourceUrl (${ex.message})"
                 return@forEach
             }
-            val pdfMeta = importService.extractPdfMetaForSync(pdfBytes, item.title)
+            val pdfMeta = importService.extractPdfMetaForSync(pdfBytes, item.title, item.sourceUrl)
+            if (pdfMeta.year != null && item.year != pdfMeta.year) {
+                item.year = pdfMeta.year
+            }
 
             if (item.materialKind == Lab19MaterialClassifier.SCIENTIFIC_PUBLICATION && item.kbPublicationId != null) {
                 val current = publicationPersistencePort.findById(item.kbPublicationId!!)
                 if (current != null) {
                     val newAuthors = pdfMeta.authors ?: current.authors
                     val newPublished = pdfMeta.published ?: current.published
-                    if (newAuthors != current.authors || newPublished != current.published) {
-                        publicationPersistencePort.save(current.copy(authors = newAuthors, published = newPublished))
+                    val newYear = pdfMeta.year ?: current.year
+                    if (newAuthors != current.authors || newPublished != current.published || newYear != current.year) {
+                        publicationPersistencePort.save(current.copy(authors = newAuthors, published = newPublished, year = newYear))
                         publicationsUpdated++
                     }
                 }
