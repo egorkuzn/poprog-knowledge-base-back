@@ -29,6 +29,7 @@ dependencies {
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 	implementation("org.apache.pdfbox:pdfbox:2.0.30")
 	implementation("org.jsoup:jsoup:1.18.3")
 	implementation("org.reactivestreams:reactive-streams:1.0.4")
@@ -38,6 +39,7 @@ dependencies {
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 	testImplementation("org.testcontainers:junit-jupiter")
 	testImplementation("org.testcontainers:postgresql")
@@ -53,7 +55,7 @@ kotlin {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
-	// PDFBox maintains a disk font cache under user.home. On some machines it can become huge/corrupted
-	// and trigger OOM during tests. Use an isolated per-build home directory for deterministic runs.
-	systemProperty("user.home", file("${buildDir}/test-home").absolutePath)
+	maxHeapSize = "2g"
+	// PDFBox maintains a disk font cache under user.home; isolate it for deterministic CI runs.
+	systemProperty("user.home", layout.buildDirectory.dir("test-home").get().asFile.absolutePath)
 }

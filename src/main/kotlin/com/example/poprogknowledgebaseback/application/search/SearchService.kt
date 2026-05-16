@@ -12,6 +12,7 @@ import com.example.poprogknowledgebaseback.domain.studentwork.port.StudentWorkPe
 import jakarta.annotation.PostConstruct
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
+import org.slf4j.LoggerFactory
 
 @Service
 @ConditionalOnProperty(name = ["app.search.enabled"], havingValue = "true", matchIfMissing = true)
@@ -24,90 +25,93 @@ class SearchService(
     private val pdfTextExtractor: PdfTextExtractor
 ) : SearchUseCase {
 
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     companion object {
         private const val MIN_SEARCH_QUERY_LENGTH = 3
     }
 
     @PostConstruct
     override fun reindex() {
-        val publications = publicationPersistencePort.findAllOrderByYearDescIdAsc()
-        val studentWorks = studentWorkPersistencePort.findAllOrdered()
+        try {
+            val publications = publicationPersistencePort.findAllOrderByYearDescIdAsc()
+            val studentWorks = studentWorkPersistencePort.findAllOrdered()
 
-        val publicationPrepared = publications.map { publication ->
-            val pdfText = resolvePdfText(publication.pdfText, publication.link) { extracted ->
-                publicationPersistencePort.save(publication.copy(pdfText = extracted))
+            val publicationPrepared = publications.map { publication ->
+                val pdfText = resolvePdfText(publication.pdfText, publication.link) { extracted ->
+                    publicationPersistencePort.save(publication.copy(pdfText = extracted))
+                }
+                val updatedPublication = if (pdfText.isNullOrBlank() || pdfText == publication.pdfText) {
+                    publication
+                } else {
+                    publication.copy(pdfText = pdfText)
+                }
+                val item = SearchItem(
+                    id = searchId(SearchSourceType.PUBLICATION, publication.id),
+                    sourceType = SearchSourceType.PUBLICATION,
+                    sourceId = publication.id ?: error("Publication id is missing"),
+                    groupTitle = publication.year.toString(),
+                    groupHash = null,
+                    authors = publication.authors,
+                    theme = publication.theme,
+                    published = publication.published,
+                    link = publication.link.ifBlank { null },
+                    pdfText = pdfText
+                )
+                item to updatedPublication
             }
-            val updatedPublication = if (pdfText.isNullOrBlank() || pdfText == publication.pdfText) {
-                publication
-            } else {
-                publication.copy(pdfText = pdfText)
+
+            val studentWorkPrepared = studentWorks.map { studentWork ->
+                val pdfText = resolvePdfText(studentWork.pdfText, studentWork.documentLink) { extracted ->
+                    studentWorkPersistencePort.save(studentWork.copy(pdfText = extracted))
+                }
+                val updatedWork = if (pdfText.isNullOrBlank() || pdfText == studentWork.pdfText) {
+                    studentWork
+                } else {
+                    studentWork.copy(pdfText = pdfText)
+                }
+                val item = SearchItem(
+                    id = searchId(SearchSourceType.STUDENT_WORK, studentWork.id),
+                    sourceType = SearchSourceType.STUDENT_WORK,
+                    sourceId = studentWork.id ?: error("Student work id is missing"),
+                    groupTitle = studentWork.projectTypeTitle,
+                    groupHash = studentWork.projectTypeHash,
+                    authors = studentWork.authors,
+                    theme = studentWork.theme,
+                    published = studentWork.published,
+                    link = studentWork.documentLink,
+                    pdfText = pdfText
+                )
+                item to updatedWork
             }
-            val item = SearchItem(
-                id = searchId(SearchSourceType.PUBLICATION, publication.id),
-                sourceType = SearchSourceType.PUBLICATION,
-                sourceId = publication.id ?: error("Publication id is missing"),
-                groupTitle = publication.year.toString(),
-                groupHash = null,
-                authors = publication.authors,
-                theme = publication.theme,
-                published = publication.published,
-                link = publication.link.ifBlank { null },
-                pdfText = pdfText
+
+            searchIndexPort.replaceAll(
+                publicationPrepared.map { it.first } + studentWorkPrepared.map { it.first }
             )
-            item to updatedPublication
-        }
-
-        val studentWorkPrepared = studentWorks.map { studentWork ->
-            val pdfText = resolvePdfText(studentWork.pdfText, studentWork.documentLink) { extracted ->
-                studentWorkPersistencePort.save(studentWork.copy(pdfText = extracted))
-            }
-            val updatedWork = if (pdfText.isNullOrBlank() || pdfText == studentWork.pdfText) {
-                studentWork
-            } else {
-                studentWork.copy(pdfText = pdfText)
-            }
-            val item = SearchItem(
-                id = searchId(SearchSourceType.STUDENT_WORK, studentWork.id),
-                sourceType = SearchSourceType.STUDENT_WORK,
-                sourceId = studentWork.id ?: error("Student work id is missing"),
-                groupTitle = studentWork.projectTypeTitle,
-                groupHash = studentWork.projectTypeHash,
-                authors = studentWork.authors,
-                theme = studentWork.theme,
-                published = studentWork.published,
-                link = studentWork.documentLink,
-                pdfText = pdfText
+            searchChunkIndexingService.reindex(
+                publicationPrepared.map { it.second },
+                studentWorkPrepared.map { it.second }
             )
-            item to updatedWork
+        } catch (exception: Exception) {
+            logger.warn("Search reindex skipped: Elasticsearch temporarily unavailable.", exception)
         }
-
-        searchIndexPort.replaceAll(
-            publicationPrepared.map { it.first } + studentWorkPrepared.map { it.first }
-        )
-        searchChunkIndexingService.reindex(
-            publicationPrepared.map { it.second },
-            studentWorkPrepared.map { it.second }
-        )
     }
 
-    override fun search(query: String, limit: Int): List<SearchResult> =
-        if (query.trim().length < MIN_SEARCH_QUERY_LENGTH) {
-            emptyList()
-        } else {
-            searchIndexPort.search(query = query.trim(), limit = limit).map {
-            SearchResult(
-                id = it.id,
-                type = it.sourceType.name.lowercase(),
-                sourceId = it.sourceId,
-                groupTitle = it.groupTitle,
-                groupHash = it.groupHash,
-                authors = it.authors,
-                theme = it.theme,
-                published = it.published,
-                link = it.link
-            )
+    override fun search(query: String, limit: Int): List<SearchResult> {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+            return emptyList()
         }
+
+        val indexedResults = searchIndexPort.search(query = trimmedQuery, limit = limit).map {
+            it.toSearchResult()
         }
+        if (indexedResults.isNotEmpty()) {
+            return indexedResults
+        }
+
+        return searchInRelationalStorage(trimmedQuery, limit)
+    }
 
     override fun indexPublication(publication: Publication) {
         searchIndexPort.index(publication.toSearchItem())
@@ -154,6 +158,59 @@ class SearchService(
         link = documentLink,
         pdfText = pdfText
     )
+
+    private fun SearchItem.toSearchResult() = SearchResult(
+        id = id,
+        type = sourceType.name.lowercase(),
+        sourceId = sourceId,
+        groupTitle = groupTitle,
+        groupHash = groupHash,
+        authors = authors,
+        theme = theme,
+        published = published,
+        link = link
+    )
+
+    private fun searchInRelationalStorage(query: String, limit: Int): List<SearchResult> {
+        val normalizedQuery = query.lowercase()
+        val tokens = normalizedQuery.split(Regex("\\s+")).filter { it.length >= MIN_SEARCH_QUERY_LENGTH }
+        if (tokens.isEmpty()) {
+            return emptyList()
+        }
+
+        val publications = publicationPersistencePort.findAllOrderByYearDescIdAsc()
+            .asSequence()
+            .filter { it.matchesSearch(tokens) }
+            .map { it.toSearchItem().toSearchResult() }
+
+        val studentWorks = studentWorkPersistencePort.findAllOrdered()
+            .asSequence()
+            .filter { it.matchesSearch(tokens) }
+            .map { it.toSearchItem().toSearchResult() }
+
+        return (publications + studentWorks)
+            .take(limit)
+            .toList()
+    }
+
+    private fun Publication.matchesSearch(tokens: List<String>): Boolean {
+        val haystack = listOf(authors, theme, published, year.toString(), pdfText.orEmpty())
+            .joinToString(" ")
+            .lowercase()
+        return tokens.all { haystack.contains(it) }
+    }
+
+    private fun StudentWork.matchesSearch(tokens: List<String>): Boolean {
+        val haystack = listOf(
+            authors,
+            theme,
+            published,
+            projectTypeTitle,
+            projectTypeHash,
+            pdfText.orEmpty()
+        ).joinToString(" ").lowercase()
+        return tokens.all { haystack.contains(it) }
+    }
 
     private fun resolvePdfText(
         existing: String?,

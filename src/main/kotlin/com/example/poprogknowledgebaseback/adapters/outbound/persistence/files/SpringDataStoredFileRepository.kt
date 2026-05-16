@@ -4,5 +4,6 @@ import java.util.UUID
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface SpringDataStoredFileRepository : JpaRepository<StoredFileJpaEntity, UUID> {
-    fun findFirstByCategoryAndSha256(category: String, sha256: String): StoredFileJpaEntity?
+    fun findByCategoryAndStoredFilename(category: String, storedFilename: String): StoredFileJpaEntity?
+    fun findByCategoryAndSha256(category: String, sha256: String): StoredFileJpaEntity?
 }

@@ -1,17 +1,18 @@
--- liquibase formatted sql
+--liquibase formatted sql
 
--- changeset poprog:018-create-stored-file-table
-CREATE TABLE stored_file (
-    id UUID PRIMARY KEY,
-    category TEXT NOT NULL,
-    original_filename TEXT NOT NULL,
-    stored_filename TEXT NOT NULL,
-    content_type TEXT NOT NULL,
-    size_bytes BIGINT NOT NULL,
-    sha256 TEXT NOT NULL,
-    content BYTEA NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+--changeset poprog:create-stored-file-table
+create table if not exists stored_file (
+    id uuid primary key,
+    category text not null,
+    original_filename text not null,
+    stored_filename text not null,
+    content_type text not null,
+    size_bytes bigint not null,
+    sha256 text not null,
+    content bytea not null,
+    created_at timestamptz not null default now()
 );
 
-CREATE INDEX idx_stored_file_category ON stored_file(category);
-CREATE UNIQUE INDEX idx_stored_file_sha256_category ON stored_file(category, sha256);
+create unique index if not exists ux_stored_file_category_sha256 on stored_file (category, sha256);
+create unique index if not exists ux_stored_file_category_stored_filename on stored_file (category, stored_filename);
+

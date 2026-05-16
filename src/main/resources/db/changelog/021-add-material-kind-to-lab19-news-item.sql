@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset poprog:020-add-material-kind-to-lab19-news-item
+-- changeset poprog:021-add-material-kind-to-lab19-news-item
 ALTER TABLE lab19_news_item
     ADD COLUMN material_kind TEXT NOT NULL DEFAULT 'NEWS';
 

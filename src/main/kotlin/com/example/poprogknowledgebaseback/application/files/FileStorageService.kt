@@ -3,9 +3,9 @@ package com.example.poprogknowledgebaseback.application.files
 import com.example.poprogknowledgebaseback.adapters.outbound.persistence.files.SpringDataStoredFileRepository
 import com.example.poprogknowledgebaseback.adapters.outbound.persistence.files.StoredFileJpaEntity
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
 import java.security.MessageDigest
-import java.time.OffsetDateTime
-import java.util.HexFormat
 import java.util.UUID
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataIntegrityViolationException
@@ -15,81 +15,81 @@ import org.springframework.web.multipart.MultipartFile
 
 @Service
 class FileStorageService(
-    private val storedFileRepository: SpringDataStoredFileRepository,
-    @Value("\${app.files.base-url}") private val baseUrl: String
+    @Value("\${app.files.storage-dir}") private val storageDir: String,
+    @Value("\${app.files.base-url}") private val baseUrl: String,
+    private val storedFileRepository: SpringDataStoredFileRepository
 ) : FileStorageUseCase {
 
     @Transactional
     override fun store(category: String, file: MultipartFile): StoredFile {
         require(!file.isEmpty) { "Uploaded file is empty" }
 
-        val id = UUID.randomUUID()
         val normalizedCategory = normalizeCategory(category)
         val originalName = sanitizeFileName(file.originalFilename)
         val extension = originalName.substringAfterLast('.', missingDelimiterValue = "").lowercase()
-        val storedName = buildString {
-            append(id)
+        val content = file.bytes
+        val sha256 = sha256Hex(content)
+        val categoryPath = storageRoot().resolve(normalizedCategory).normalize()
+        Files.createDirectories(categoryPath)
+
+        storedFileRepository.findByCategoryAndSha256(normalizedCategory, sha256)?.let { existing ->
+            ensureFileOnDisk(categoryPath, existing.storedFilename, existing.content)
+            return existing.toStoredFile()
+        }
+
+        val generatedName = buildString {
+            append(UUID.randomUUID())
             if (extension.isNotBlank()) {
-                append(".")
+                append('.')
                 append(extension)
             }
         }
-        val content = file.bytes
-        val sha256 = sha256(content)
-        storedFileRepository.findFirstByCategoryAndSha256(normalizedCategory, sha256)?.let { existing ->
-            return StoredFile(
-                fileName = existing.storedFilename,
-                url = "${baseUrl.trimEnd('/')}/${existing.category}/${existing.storedFilename}"
-            )
-        }
-        val contentType = file.contentType?.trim().takeUnless { it.isNullOrBlank() } ?: "application/octet-stream"
+        ensureFileOnDisk(categoryPath, generatedName, content)
+
         val entity = StoredFileJpaEntity(
-            id = id,
+            id = UUID.fromString(generatedName.substringBefore('.')),
             category = normalizedCategory,
-            originalFilename = originalName,
-            storedFilename = storedName,
-            contentType = contentType,
+            originalFilename = originalName.ifBlank { generatedName },
+            storedFilename = generatedName,
+            contentType = file.contentType?.trim().takeUnless { it.isNullOrBlank() } ?: "application/octet-stream",
             sizeBytes = content.size.toLong(),
             sha256 = sha256,
-            content = content,
-            createdAt = OffsetDateTime.now()
+            content = content
         )
-        try {
+
+        val saved = try {
             storedFileRepository.save(entity)
         } catch (ex: DataIntegrityViolationException) {
-            // In concurrent uploads, unique constraint on (category, sha256) may race.
-            val existing = storedFileRepository.findFirstByCategoryAndSha256(normalizedCategory, sha256)
-                ?: throw ex
-            return StoredFile(
-                fileName = existing.storedFilename,
-                url = "${baseUrl.trimEnd('/')}/${existing.category}/${existing.storedFilename}"
-            )
+            val existing = storedFileRepository.findByCategoryAndSha256(normalizedCategory, sha256) ?: throw ex
+            ensureFileOnDisk(categoryPath, existing.storedFilename, existing.content)
+            existing
         }
 
-        return StoredFile(
-            fileName = storedName,
-            url = "${baseUrl.trimEnd('/')}/$normalizedCategory/$storedName"
-        )
+        return saved.toStoredFile()
     }
 
     @Transactional(readOnly = true)
     override fun load(relativePath: String): StoredFileContent? {
         val normalized = normalizeRelativePath(relativePath) ?: return null
-        val requestedCategory = normalized.substringBefore('/')
-        val storedName = normalized.substringAfterLast('/')
-        val id = storedName.substringBefore('.').let { runCatching { UUID.fromString(it) }.getOrNull() } ?: return null
-        val entity = storedFileRepository.findById(id).orElse(null) ?: return null
+        val category = normalized.substringBefore('/')
+        val storedFilename = normalized.substringAfter('/')
 
-        if (entity.category != requestedCategory) {
+        storedFileRepository.findByCategoryAndStoredFilename(category, storedFilename)?.let { entity ->
+            return entity.toStoredFileContent()
+        }
+
+        val targetPath = storageRoot().resolve(normalized).normalize()
+        if (!targetPath.startsWith(storageRoot()) || !Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
             return null
         }
 
+        val content = Files.readAllBytes(targetPath)
         return StoredFileContent(
-            fileName = entity.originalFilename,
-            contentType = entity.contentType,
-            sizeBytes = entity.sizeBytes,
-            sha256 = entity.sha256,
-            content = entity.content
+            fileName = targetPath.fileName.toString(),
+            contentType = Files.probeContentType(targetPath) ?: "application/octet-stream",
+            sizeBytes = content.size.toLong(),
+            sha256 = sha256Hex(content),
+            content = content
         )
     }
 
@@ -98,6 +98,30 @@ class FileStorageService(
         val relativePath = extractRelativePath(url) ?: return null
         return load(relativePath)
     }
+
+    private fun StoredFileJpaEntity.toStoredFile(): StoredFile = StoredFile(
+        fileName = storedFilename,
+        url = "${baseUrl.trimEnd('/')}/$category/$storedFilename"
+    )
+
+    private fun StoredFileJpaEntity.toStoredFileContent(): StoredFileContent = StoredFileContent(
+        fileName = originalFilename,
+        contentType = contentType,
+        sizeBytes = sizeBytes,
+        sha256 = sha256,
+        content = content
+    )
+
+    private fun ensureFileOnDisk(categoryPath: Path, storedFilename: String, bytes: ByteArray) {
+        Files.createDirectories(categoryPath)
+        val targetPath = categoryPath.resolve(storedFilename).normalize()
+        if (Files.exists(targetPath) && Files.isRegularFile(targetPath)) {
+            return
+        }
+        Files.write(targetPath, bytes)
+    }
+
+    private fun storageRoot(): Path = Path.of(storageDir).toAbsolutePath().normalize()
 
     private fun normalizeCategory(category: String): String =
         category.trim().lowercase().replace(Regex("[^a-z0-9-]"), "-").trim('-').ifBlank { "general" }
@@ -119,11 +143,7 @@ class FileStorageService(
             return null
         }
 
-        val relativePath = requestPath
-            .removePrefix("$basePath/")
-            .takeIf { it != requestPath }
-            ?: return null
-
+        val relativePath = requestPath.removePrefix("$basePath/").takeIf { it != requestPath } ?: return null
         return normalizeRelativePath(relativePath)
     }
 
@@ -150,6 +170,8 @@ class FileStorageService(
         return normalized
     }
 
-    private fun sha256(content: ByteArray): String =
-        HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content))
+    private fun sha256Hex(bytes: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+        return digest.joinToString("") { b -> "%02x".format(b) }
+    }
 }

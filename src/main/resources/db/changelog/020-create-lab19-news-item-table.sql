@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset poprog:019-create-lab19-news-item-table
+-- changeset poprog:020-create-lab19-news-item-table
 CREATE TABLE lab19_news_item (
     id BIGSERIAL PRIMARY KEY,
     title TEXT NOT NULL,

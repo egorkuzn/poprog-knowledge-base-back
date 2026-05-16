@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset poprog:021-add-kb-entity-refs-to-lab19-news-item
+-- changeset poprog:022-add-kb-entity-refs-to-lab19-news-item
 ALTER TABLE lab19_news_item
     ADD COLUMN kb_publication_id BIGINT,
     ADD COLUMN kb_student_work_id BIGINT;
