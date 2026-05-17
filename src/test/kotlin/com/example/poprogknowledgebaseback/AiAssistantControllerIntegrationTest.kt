@@ -269,6 +269,33 @@ class AiAssistantControllerIntegrationTest {
     }
 
     @Test
+    fun `should return project documentation widget for language documentation question without calling llm`() {
+        val responseBody = mockMvc.perform(
+            post("/api/assistant/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "messages": [
+                        { "role": "user", "content": "Где документация по Reflex?" }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val response = objectMapper.readTree(responseBody)
+        assertEquals("widget", response["mode"].requiredText())
+        assertEquals("project_documentation", response["widget"]["widgetType"].requiredText())
+        assertEquals("/projects/reflex/docs", response["widget"]["items"][0]["href"].requiredText())
+        assertEquals(0, recordingAiAssistantPort.recordedRequests.size)
+    }
+
+    @Test
     fun `should keep llm path for document explanation`() {
         val responseBody = mockMvc.perform(
             post("/api/assistant/chat")

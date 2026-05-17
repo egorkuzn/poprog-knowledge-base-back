@@ -51,6 +51,17 @@ class AssistantWidgetRouter(
             "покажи языки программирования",
             "покажи языки"
         )
+        private val DOCUMENTATION_PATTERNS = listOf(
+            "документация",
+            "документацию",
+            "документации",
+            "руководство",
+            "гайд",
+            "инструкция",
+            "мануал",
+            "быстрый старт",
+            "как начать"
+        )
         private val SUPPORTED_LANGUAGES = listOf(
             SupportedLanguage("reflex", "Reflex", listOf("reflex"), "Процесс-ориентированный язык Poprog"),
             SupportedLanguage("post", "poST", listOf("post", "поst"), "Процесс-ориентированное расширение Structured Text"),
@@ -75,11 +86,19 @@ class AssistantWidgetRouter(
 
         val asksForPublications = containsApproximateKeyword(normalized, listOf("публикации", "публикация"))
         val asksForWorks = containsApproximateKeyword(normalized, listOf("студенческие", "работы", "работа", "дипломные", "диссертации"))
+        val asksForDocumentation = matchesAnyPattern(normalized, DOCUMENTATION_PATTERNS, threshold = 0.64)
 
         detectLanguage(normalized)?.let { language ->
+            if (asksForDocumentation) {
+                return buildProjectDocumentationWidget(language)
+            }
             if (!asksForPublications && !asksForWorks) {
                 return buildLanguageBranch(language)
             }
+        }
+
+        if (asksForDocumentation) {
+            return buildProjectDocumentationCatalogWidget()
         }
 
         if (containsApproximateKeyword(normalized, listOf("публикации", "публикация"))) {
@@ -197,11 +216,61 @@ class AssistantWidgetRouter(
             title = "Что показать по ${language.title}?",
             subtitle = "Можно сразу перейти к типовым сценариям без обращения к LLM",
             followUpOptions = listOf(
+                navigateAction("${language.id}-documentation", "Документация", "/projects/${language.id}/docs"),
                 promptAction("${language.id}-publications", "Публикации", "Покажи публикации по ${language.title}"),
                 promptAction("${language.id}-works", "Студенческие работы", "Есть ли студенческие работы по ${language.title}?"),
                 promptAction("${language.id}-search", "Все материалы", "Найди материалы по ${language.title}"),
                 navigateAction("${language.id}-projects", "Проекты", "/projects")
             )
+        )
+
+    private fun buildProjectDocumentationWidget(language: SupportedLanguage): AssistantWidgetResult =
+        AssistantWidgetResult(
+            widgetType = "project_documentation",
+            title = "Документация ${language.title}",
+            subtitle = "Открываю проектную документацию вместо общей инструкции портала",
+            items = listOf(
+                AssistantWidgetItemResult(
+                    id = "${language.id}-docs",
+                    title = "Открыть документацию ${language.title}",
+                    subtitle = language.description,
+                    meta = "Проектная документация",
+                    href = "/projects/${language.id}/docs",
+                    sourceType = "project-documentation",
+                    sourceId = language.id
+                )
+            ),
+            actions = listOf(
+                navigateAction("${language.id}-open-docs", "Открыть документацию", "/projects/${language.id}/docs")
+            ),
+            followUpOptions = listOf(
+                promptAction("${language.id}-publications", "Публикации", "Покажи публикации по ${language.title}"),
+                promptAction("${language.id}-works", "Студенческие работы", "Есть ли студенческие работы по ${language.title}?"),
+                navigateAction("${language.id}-project", "Карточка проекта", "/projects/${language.id}")
+            )
+        )
+
+    private fun buildProjectDocumentationCatalogWidget(): AssistantWidgetResult =
+        AssistantWidgetResult(
+            widgetType = "project_documentation_catalog",
+            title = "Документация проектов",
+            subtitle = "Выберите технологию Poprog, по которой нужна документация",
+            items = SUPPORTED_LANGUAGES.map { language ->
+                AssistantWidgetItemResult(
+                    id = "${language.id}-docs",
+                    title = language.title,
+                    subtitle = language.description,
+                    href = "/projects/${language.id}/docs",
+                    sourceType = "project-documentation",
+                    sourceId = language.id
+                )
+            },
+            actions = listOf(
+                navigateAction("open-projects", "Открыть все проекты", "/projects")
+            ),
+            followUpOptions = SUPPORTED_LANGUAGES.map { language ->
+                navigateAction("${language.id}-open-docs", language.title, "/projects/${language.id}/docs")
+            }
         )
 
     private fun buildSearchWidget(userMessage: String): AssistantWidgetResult {
