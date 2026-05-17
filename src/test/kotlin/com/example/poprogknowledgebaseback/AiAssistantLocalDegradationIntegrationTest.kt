@@ -51,7 +51,7 @@ class AiAssistantLocalDegradationIntegrationTest {
                     """
                     {
                       "messages": [
-                        { "role": "user", "content": "Привет, помоги с документом" }
+                        { "role": "user", "content": "Тест деградации внешнего ИИ сервиса" }
                       ]
                     }
                     """.trimIndent()
@@ -65,7 +65,7 @@ class AiAssistantLocalDegradationIntegrationTest {
         val response = objectMapper.readTree(responseBody)
         val chatId = UUID.fromString(response["chatId"].asText())
         assertEquals("local-fallback", response["model"].asText())
-        assertTrue(response["content"].asText().contains("Локальный режим"))
+        assertTrue(response["content"].asText().contains("внешний ИИ-сервис временно недоступен"))
 
         val historyBody = mockMvc.perform(get("/api/assistant/chats/{chatId}/messages", chatId))
             .andExpect(status().isOk)
@@ -76,7 +76,7 @@ class AiAssistantLocalDegradationIntegrationTest {
         val history = objectMapper.readTree(historyBody)
         assertEquals(2, history["messages"].size())
         assertEquals("assistant", history["messages"][1]["role"].asText())
-        assertTrue(history["messages"][1]["content"].asText().contains("Локальный режим"))
+        assertTrue(history["messages"][1]["content"].asText().contains("внешний ИИ-сервис временно недоступен"))
     }
 
     companion object {

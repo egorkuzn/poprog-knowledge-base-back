@@ -234,9 +234,9 @@ class AiAssistantService(
     private fun buildLocalFallbackResponse(requestMessages: List<AiChatMessage>): AiAssistantResponse {
         val lastUserMessage = requestMessages.lastOrNull { it.role == AiChatMessageRole.USER }?.content?.trim().orEmpty()
         val content = if (lastUserMessage.isBlank()) {
-            "Локальный режим: внешний ИИ-сервис сейчас недоступен. История чата сохранена, но ответ модели временно заменён локальной заглушкой."
+            "Режим базового ассистента: внешний ИИ-сервис временно недоступен. История чата сохранена."
         } else {
-            "Локальный режим: внешний ИИ-сервис сейчас недоступен. История чата сохранена, но ответ модели временно заменён локальной заглушкой. Последний запрос: \"$lastUserMessage\"."
+            "Режим базового ассистента: внешний ИИ-сервис временно недоступен. История чата сохранена. Ваш последний запрос: \"$lastUserMessage\"."
         }
 
         return AiAssistantResponse(
