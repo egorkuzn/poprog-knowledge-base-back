@@ -8,11 +8,8 @@ import com.example.poprogknowledgebaseback.domain.assistant.port.ChatConversatio
 import java.time.Clock
 import java.util.UUID
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.core.env.Environment
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.server.ResponseStatusException
 import tools.jackson.databind.ObjectMapper
 
 @Service
@@ -21,20 +18,12 @@ class NoOpAiAssistantService(
     private val chatConversationPersistencePort: ChatConversationPersistencePort,
     private val assistantWidgetRouter: AssistantWidgetRouter,
     private val clock: Clock,
-    private val environment: Environment,
     private val objectMapper: ObjectMapper
 ) : AiAssistantUseCase {
 
     @Transactional
     override fun chat(command: AssistantChatCommand): AssistantChatResult {
         require(command.messages.isNotEmpty()) { "At least one chat message is required" }
-
-        if (!isLocalLikeProfile()) {
-            throw ResponseStatusException(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "GigaChat integration is disabled"
-            )
-        }
 
         val chatId = command.chatId ?: UUID.randomUUID()
         val conversation = command.chatId?.let { existingChatId ->
@@ -72,9 +61,9 @@ class NoOpAiAssistantService(
 
         val lastUserMessage = command.messages.lastOrNull { it.role == AiChatMessageRole.USER }?.content?.trim().orEmpty()
         val fallbackResponse = if (lastUserMessage.isBlank()) {
-            "Локальный режим: интеграция GigaChat отключена. История чата сохранена, но ответ модели сейчас недоступен."
+            "Режим базового ассистента: внешний ИИ-сервис временно недоступен. История чата сохранена."
         } else {
-            "Локальный режим: интеграция GigaChat отключена. История чата сохранена, но полноценный ответ модели сейчас недоступен. Последний запрос: \"$lastUserMessage\"."
+            "Режим базового ассистента: внешний ИИ-сервис временно недоступен. История чата сохранена. Ваш последний запрос: \"$lastUserMessage\"."
         }
 
         persistConversationMessages(conversation.id, command.messages, fallbackResponse)
@@ -90,11 +79,6 @@ class NoOpAiAssistantService(
             documentHints = emptyList(),
             mode = AssistantResponseMode.TEXT
         )
-    }
-
-    private fun isLocalLikeProfile(): Boolean {
-        val activeProfiles = environment.activeProfiles.map { it.lowercase() }.toSet()
-        return activeProfiles.any { it == "local" || it == "dev" }
     }
 
     private fun persistConversationMessages(

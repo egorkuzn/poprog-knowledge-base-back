@@ -54,7 +54,7 @@ class AiAssistantLocalFallbackIntegrationTest {
         val response = objectMapper.readTree(responseBody)
         val chatId = UUID.fromString(response["chatId"].asText())
         assertEquals("local-fallback", response["model"].asText())
-        assertTrue(response["content"].asText().contains("Локальный режим"))
+        assertTrue(response["content"].asText().contains("внешний ИИ-сервис временно недоступен"))
 
         val historyBody = mockMvc.perform(get("/api/assistant/chats/{chatId}/messages", chatId))
             .andExpect(status().isOk)
@@ -66,7 +66,7 @@ class AiAssistantLocalFallbackIntegrationTest {
         assertEquals(2, history["messages"].size())
         assertEquals("user", history["messages"][0]["role"].asText())
         assertEquals("assistant", history["messages"][1]["role"].asText())
-        assertTrue(history["messages"][1]["content"].asText().contains("Локальный режим"))
+        assertTrue(history["messages"][1]["content"].asText().contains("внешний ИИ-сервис временно недоступен"))
     }
 
     companion object {
