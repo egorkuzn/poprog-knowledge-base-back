@@ -2,6 +2,7 @@ package com.example.poprogknowledgebaseback
 
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertContains
 import com.example.poprogknowledgebaseback.application.account.KeycloakUserAdminClient
 import com.example.poprogknowledgebaseback.application.account.RegisterAccountCommand
 import org.junit.jupiter.api.Test
@@ -36,6 +37,9 @@ class AccountControllerIntegrationTest {
 
     @Autowired
     private lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    private lateinit var keycloakUserAdminClient: RecordingKeycloakUserAdminClient
 
     @Test
     fun `should return unauthorized for account profile without auth headers`() {
@@ -118,6 +122,31 @@ class AccountControllerIntegrationTest {
         assertTrue(putJson["roles"].isArray)
     }
 
+    @Test
+    fun `should accept password reset request with neutral response`() {
+        val payload =
+            """
+            {
+              "email": "portal-user@example.com"
+            }
+            """.trimIndent()
+
+        val response = mockMvc.perform(
+            post("/api/account/password/reset")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload)
+        )
+            .andExpect(status().isAccepted)
+            .andReturn()
+            .response
+            .contentAsString
+
+        val json = objectMapper.readTree(response)
+        assertEquals("accepted", json["status"].asText())
+        assertContains(json["message"].asText(), "Если аккаунт")
+        assertEquals(listOf("portal-user@example.com"), keycloakUserAdminClient.passwordResetEmails)
+    }
+
     companion object {
         @Container
         private val postgres = PostgreSQLContainer("postgres:18")
@@ -136,10 +165,17 @@ class AccountControllerIntegrationTest {
     class KeycloakRegistrationTestConfig {
         @Bean
         @Primary
-        fun keycloakUserAdminClient(): KeycloakUserAdminClient =
-            object : KeycloakUserAdminClient {
-                override fun createUser(command: RegisterAccountCommand): String =
-                    "keycloak-created-${command.email.replace(Regex("[^a-z0-9]+"), "-").trim('-')}"
-            }
+        fun keycloakUserAdminClient(): RecordingKeycloakUserAdminClient = RecordingKeycloakUserAdminClient()
+    }
+
+    class RecordingKeycloakUserAdminClient : KeycloakUserAdminClient {
+        val passwordResetEmails = mutableListOf<String>()
+
+        override fun createUser(command: RegisterAccountCommand): String =
+            "keycloak-created-${command.email.replace(Regex("[^a-z0-9]+"), "-").trim('-')}"
+
+        override fun sendPasswordResetEmail(email: String) {
+            passwordResetEmails += email
+        }
     }
 }

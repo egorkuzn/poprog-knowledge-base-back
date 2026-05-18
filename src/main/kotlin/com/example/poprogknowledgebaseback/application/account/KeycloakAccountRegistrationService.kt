@@ -18,6 +18,7 @@ data class RegisterAccountCommand(
 
 interface KeycloakUserAdminClient {
     fun createUser(command: RegisterAccountCommand): String
+    fun sendPasswordResetEmail(email: String)
 }
 
 @Service

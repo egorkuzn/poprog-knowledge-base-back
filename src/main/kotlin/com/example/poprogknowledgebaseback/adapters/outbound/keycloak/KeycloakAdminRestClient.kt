@@ -66,6 +66,44 @@ class KeycloakAdminRestClient(
             ?: throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "Keycloak did not return created user id")
     }
 
+    override fun sendPasswordResetEmail(email: String) {
+        val token = requestAdminToken()
+        val userIds = findUserIdsByEmail(token, email)
+        if (userIds.isEmpty()) {
+            return
+        }
+
+        userIds.forEach { userId ->
+            try {
+                restClient.put()
+                    .uri { builder ->
+                        builder
+                            .path("/admin/realms/{realm}/users/{userId}/execute-actions-email")
+                            .queryParam("client_id", properties.clientId)
+                            .queryParam("lifespan", 900)
+                            .build(properties.realm, userId)
+                    }
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+                    .body(listOf("UPDATE_PASSWORD"))
+                    .exchange { _, response ->
+                        if (response.statusCode.value() !in listOf(HttpStatus.NO_CONTENT.value(), HttpStatus.OK.value())) {
+                            throw ResponseStatusException(
+                                HttpStatus.BAD_GATEWAY,
+                                "Keycloak password reset request failed with status ${response.statusCode.value()}"
+                            )
+                        }
+                    }
+            } catch (ex: RestClientResponseException) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Keycloak password reset request failed with status ${ex.statusCode.value()}",
+                    ex
+                )
+            }
+        }
+    }
+
     private fun requestAdminToken(): String {
         val username = properties.adminUsername.trim()
         val password = properties.adminPassword.trim()
@@ -113,6 +151,32 @@ class KeycloakAdminRestClient(
         throw ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Keycloak base URL is not configured")
     }
 
+    private fun findUserIdsByEmail(token: String, email: String): List<String> {
+        val users = try {
+            restClient.get()
+                .uri { builder ->
+                    builder
+                        .path("/admin/realms/{realm}/users")
+                        .queryParam("email", email)
+                        .queryParam("exact", true)
+                        .queryParam("max", 3)
+                        .build(properties.realm)
+                }
+                .header(HttpHeaders.AUTHORIZATION, "Bearer $token")
+                .retrieve()
+                .body(Array<KeycloakUserSummaryResponse>::class.java)
+                .orEmpty()
+        } catch (ex: RestClientResponseException) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_GATEWAY,
+                "Keycloak user lookup failed with status ${ex.statusCode.value()}",
+                ex
+            )
+        }
+
+        return users.mapNotNull { it.id?.trim() }.filter { it.isNotBlank() }
+    }
+
     private fun RegisterAccountCommand.toKeycloakUserPayload() = KeycloakCreateUserRequest(
         username = email,
         email = email,
@@ -157,5 +221,9 @@ class KeycloakAdminRestClient(
         val type: String,
         val value: String,
         val temporary: Boolean
+    )
+
+    private data class KeycloakUserSummaryResponse(
+        val id: String? = null
     )
 }
