@@ -50,7 +50,7 @@ class AccountControllerIntegrationTest {
             {
               "name": "Portal User",
               "email": "portal-user@example.com",
-              "password": "password123"
+              "password": "StrongPass-123!"
             }
             """.trimIndent()
 

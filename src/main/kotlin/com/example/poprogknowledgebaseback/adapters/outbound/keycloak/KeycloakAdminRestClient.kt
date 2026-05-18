@@ -34,6 +34,10 @@ class KeycloakAdminRestClient(
                 .exchange { _, response ->
                     when (response.statusCode.value()) {
                         HttpStatus.CREATED.value() -> response.headers.location
+                        HttpStatus.BAD_REQUEST.value() -> throw ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Keycloak rejected account data. Check password policy and email format."
+                        )
                         HttpStatus.CONFLICT.value() -> throw ResponseStatusException(
                             HttpStatus.CONFLICT,
                             "User with this email already exists in Keycloak"
@@ -46,8 +50,12 @@ class KeycloakAdminRestClient(
                 }
         } catch (ex: RestClientResponseException) {
             throw ResponseStatusException(
-                HttpStatus.BAD_GATEWAY,
-                "Keycloak user creation failed with status ${ex.statusCode.value()}",
+                if (ex.statusCode.value() == HttpStatus.BAD_REQUEST.value()) HttpStatus.BAD_REQUEST else HttpStatus.BAD_GATEWAY,
+                if (ex.statusCode.value() == HttpStatus.BAD_REQUEST.value()) {
+                    "Keycloak rejected account data. Check password policy and email format."
+                } else {
+                    "Keycloak user creation failed with status ${ex.statusCode.value()}"
+                },
                 ex
             )
         }
