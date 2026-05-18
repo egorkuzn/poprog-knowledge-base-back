@@ -2,6 +2,7 @@ package com.example.poprogknowledgebaseback.adapters.inbound.web.account
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 
 data class AccountProfileResponse(
@@ -30,6 +31,10 @@ data class RegisterAccountRequest(
     @field:Size(max = 254)
     val email: String,
     @field:NotBlank
-    @field:Size(min = 8, max = 128)
+    @field:Size(min = 12, max = 128)
+    @field:Pattern(
+        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).+$",
+        message = "must contain lowercase, uppercase, digit and special character"
+    )
     val password: String
 )
