@@ -1,6 +1,7 @@
 package com.example.poprogknowledgebaseback.adapters.inbound.web.account
 
 import com.example.poprogknowledgebaseback.application.account.AccountProfileResult
+import com.example.poprogknowledgebaseback.application.account.AccountPasswordResetService
 import com.example.poprogknowledgebaseback.application.account.AccountProfileService
 import com.example.poprogknowledgebaseback.application.account.KeycloakAccountRegistrationService
 import com.example.poprogknowledgebaseback.application.account.RegisterAccountCommand
@@ -28,7 +29,8 @@ import org.springframework.http.HttpStatus
 @Tag(name = "Личный кабинет", description = "Операции профиля текущего пользователя")
 class AccountController(
     private val accountProfileService: AccountProfileService,
-    private val keycloakAccountRegistrationService: KeycloakAccountRegistrationService
+    private val keycloakAccountRegistrationService: KeycloakAccountRegistrationService,
+    private val accountPasswordResetService: AccountPasswordResetService
 ) {
 
     @PostMapping("/register")
@@ -57,6 +59,30 @@ class AccountController(
                 password = request.password
             )
         ).toDto()
+    }
+
+    @PostMapping("/password/reset")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(
+        summary = "Запросить восстановление пароля",
+        description = "Отправляет письмо для смены пароля через Keycloak. Ответ всегда нейтральный и не раскрывает существование email."
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "202",
+                description = "Запрос принят",
+                content = [Content(schema = Schema(implementation = AccountPasswordResetResponse::class))]
+            ),
+            ApiResponse(responseCode = "400", description = "Некорректный email")
+        ]
+    )
+    fun requestPasswordReset(@Valid @RequestBody request: AccountPasswordResetRequest): AccountPasswordResetResponse {
+        accountPasswordResetService.requestReset(request.email)
+        return AccountPasswordResetResponse(
+            status = "accepted",
+            message = "Если аккаунт с таким email существует, инструкция по восстановлению пароля отправлена."
+        )
     }
 
     @GetMapping("/profile")
