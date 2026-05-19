@@ -9,7 +9,33 @@ skinparam classArrowColor #2F4858
 skinparam shadowing false
 skinparam packageStyle rectangle
 
-title Актуальная схема БД poprog_kb / public\nPostgreSQL 18.3, выгрузка из локальной БД
+title PlantUML-диаграмма таблиц БД poprog_kb\nPostgreSQL 18.3, выгрузка из локальной БД
+
+
+package "technical schemas" as technical_schemas {
+  rectangle "pg_catalog" as schema_pg_catalog {
+    note as pg_catalog_note
+      Системный каталог PostgreSQL.
+      Объекты: 64 BASE TABLE, 80 VIEW.
+      Прикладные данные портала здесь не хранятся.
+    end note
+  }
+
+  rectangle "information_schema" as schema_information_schema {
+    note as information_schema_note
+      SQL-стандартное представление метаданных.
+      Объекты: 4 BASE TABLE, 65 VIEW.
+      Используется для introspection схемы.
+    end note
+  }
+
+  rectangle "pg_toast" as schema_pg_toast {
+    note as pg_toast_note
+      Техническая схема PostgreSQL для TOAST-хранения
+      больших значений. Пользовательских таблиц не содержит.
+    end note
+  }
+}
 
 package "schema: public" as public_schema {
 
