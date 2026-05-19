@@ -12,24 +12,7 @@ skinparam packageStyle rectangle
 title PlantUML-диаграмма таблиц сервиса poprog_kb\nPostgreSQL 18.3, schema public
 
 
-package "schema: public / tables" as public_schema {
-
-entity "chat_conversation" as chat_conversation {
-  * id : UUID <<PK>>
-  --
-  created_at : TIMESTAMPTZ <<NOT NULL>>
-  owner_sub : VARCHAR(128)
-}
-
-entity "chat_message" as chat_message {
-  * id : BIGSERIAL <<PK>>
-  --
-  chat_id : UUID <<FK, NOT NULL>>
-  role : VARCHAR(16) <<NOT NULL>>
-  content : TEXT <<NOT NULL>>
-  created_at : TIMESTAMPTZ <<NOT NULL>>
-  widget_payload : TEXT
-}
+package "schema: main / Liquibase migrations" as main_schema {
 
 entity "databasechangelog" as databasechangelog {
   * id : VARCHAR(255) <<NOT NULL>>
@@ -56,6 +39,29 @@ entity "databasechangeloglock" as databasechangeloglock {
   lockgranted : TIMESTAMP
   lockedby : VARCHAR(255)
 }
+
+}
+
+package "schema: public / service tables" as public_schema {
+
+entity "chat_conversation" as chat_conversation {
+  * id : UUID <<PK>>
+  --
+  created_at : TIMESTAMPTZ <<NOT NULL>>
+  owner_sub : VARCHAR(128)
+}
+
+entity "chat_message" as chat_message {
+  * id : BIGSERIAL <<PK>>
+  --
+  chat_id : UUID <<FK, NOT NULL>>
+  role : VARCHAR(16) <<NOT NULL>>
+  content : TEXT <<NOT NULL>>
+  created_at : TIMESTAMPTZ <<NOT NULL>>
+  widget_payload : TEXT
+}
+
+
 
 entity "donation_payment" as donation_payment {
   * id : UUID <<PK>>
