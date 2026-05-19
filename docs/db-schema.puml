@@ -9,72 +9,10 @@ skinparam classArrowColor #2F4858
 skinparam shadowing false
 skinparam packageStyle rectangle
 
-title PlantUML-диаграмма таблиц БД poprog_kb\nPostgreSQL 18.3, выгрузка из локальной БД
+title PlantUML-диаграмма таблиц сервиса poprog_kb\nPostgreSQL 18.3, schema public
 
 
-package "technical schemas" as technical_schemas {
-  class "information_schema" as schema_information_schema <<schema>> {
-    BASE TABLES : 4
-    VIEWS : 65
-  }
-
-  class "pg_catalog" as schema_pg_catalog <<schema>> {
-    BASE TABLES : 64
-    VIEWS : 80
-    INDEXES : 124
-  }
-
-  class "pg_toast" as schema_pg_toast <<schema>> {
-    TOAST TABLES : 52
-    TOAST INDEXES : 52
-  }
-}
-
-note right of schema_information_schema
-  BASE TABLES:
-  sql_features, sql_implementation_info,
-  sql_parts, sql_sizing.
-
-  VIEWS include metadata views:
-  schemata, tables, columns,
-  table_constraints, key_column_usage,
-  referential_constraints, views,
-  sequences, routines, triggers,
-  privileges и др.
-end note
-
-note right of schema_pg_catalog
-  Системный каталог PostgreSQL.
-
-  BASE TABLES include:
-  pg_class, pg_namespace, pg_attribute,
-  pg_constraint, pg_index, pg_sequence,
-  pg_database, pg_authid, pg_proc,
-  pg_type, pg_trigger, pg_extension,
-  pg_depend, pg_largeobject,
-  pg_statistic и др.
-
-  VIEWS include:
-  pg_tables, pg_indexes, pg_sequences,
-  pg_views, pg_roles, pg_settings,
-  pg_stat_activity, pg_stat_user_tables,
-  pg_stat_user_indexes, pg_locks и др.
-end note
-
-note right of schema_pg_toast
-  Техническая схема PostgreSQL для
-  TOAST-хранения больших значений.
-  В этой БД: 52 TOAST-таблицы
-  и 52 TOAST-индекса.
-end note
-
-package "schema: public" as public_schema {
-
-class "PUBLIC OBJECTS" as public_objects <<metadata>> {
-  TABLES : 15
-  INDEXES : 31
-  SEQUENCES : 11
-}
+package "schema: public / tables" as public_schema {
 
 entity "chat_conversation" as chat_conversation {
   * id : UUID <<PK>>
@@ -248,31 +186,21 @@ entity "user_account" as user_account {
 
 }
 
-note right of public_objects
-  Схема public содержит прикладочные
-  и служебные объекты портала.
-
-  Liquibase хранит миграции здесь же:
-  databasechangelog и databasechangeloglock.
-
-  Индексы и sequences показаны как
-  метаданные схемы, но не раскрываются
-  как таблицы ER-модели.
-end note
-
 chat_conversation ||--o{ chat_message : "chat_id / ON DELETE CASCADE"
 project_menu_section ||--o{ project_menu_item : "section_id / ON DELETE CASCADE"
 project_menu_section ||--o{ project_menu_promo : "section_id / ON DELETE CASCADE"
 project_type ||--o{ student_work : "project_type_id / ON DELETE RESTRICT"
 
 note right of databasechangelog
-  Служебная таблица Liquibase.
-  Композитный ключ на уровне Liquibase:
+  Миграционная таблица Liquibase.
+  Хранит историю применённых changeset.
+  Логический ключ Liquibase:
   id + author + filename.
 end note
 
 note right of databasechangeloglock
-  Служебная таблица блокировки Liquibase.
+  Миграционная таблица Liquibase.
+  Хранит блокировку выполнения миграций.
 end note
 
 note right of donation_payment
