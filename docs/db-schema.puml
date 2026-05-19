@@ -7,49 +7,239 @@ skinparam classBackgroundColor #F9FBFC
 skinparam classBorderColor #2F4858
 skinparam classArrowColor #2F4858
 skinparam shadowing false
+skinparam packageStyle rectangle
 
-entity "publication" as publication {
+title Актуальная схема БД poprog_kb / public\nPostgreSQL 18.3, выгрузка из локальной БД
+
+package "schema: public" as public_schema {
+
+entity "chat_conversation" as chat_conversation {
+  * id : UUID <<PK>>
+  --
+  created_at : TIMESTAMPTZ <<NOT NULL>>
+  owner_sub : VARCHAR(128)
+}
+
+entity "chat_message" as chat_message {
   * id : BIGSERIAL <<PK>>
   --
-  publication_year : INTEGER
-  authors : TEXT
-  theme : TEXT
-  published : TEXT
-  link : TEXT
+  chat_id : UUID <<FK, NOT NULL>>
+  role : VARCHAR(16) <<NOT NULL>>
+  content : TEXT <<NOT NULL>>
+  created_at : TIMESTAMPTZ <<NOT NULL>>
+  widget_payload : TEXT
+}
+
+entity "databasechangelog" as databasechangelog {
+  * id : VARCHAR(255) <<NOT NULL>>
+  * author : VARCHAR(255) <<NOT NULL>>
+  * filename : VARCHAR(255) <<NOT NULL>>
+  --
+  dateexecuted : TIMESTAMP <<NOT NULL>>
+  orderexecuted : INTEGER <<NOT NULL>>
+  exectype : VARCHAR(10) <<NOT NULL>>
+  md5sum : VARCHAR(35)
+  description : VARCHAR(255)
+  comments : VARCHAR(255)
+  tag : VARCHAR(255)
+  liquibase : VARCHAR(20)
+  contexts : VARCHAR(255)
+  labels : VARCHAR(255)
+  deployment_id : VARCHAR(10)
+}
+
+entity "databasechangeloglock" as databasechangeloglock {
+  * id : INTEGER <<PK>>
+  --
+  locked : BOOLEAN <<NOT NULL>>
+  lockgranted : TIMESTAMP
+  lockedby : VARCHAR(255)
+}
+
+entity "donation_payment" as donation_payment {
+  * id : UUID <<PK>>
+  --
+  user_sub : VARCHAR(128)
+  amount : NUMERIC(12,2) <<NOT NULL>>
+  currency : CHAR(3) <<NOT NULL>>
+  status : VARCHAR(32) <<NOT NULL>>
+  source : VARCHAR(255)
+  message : VARCHAR(1000)
+  provider_payment_id : VARCHAR(128) <<UNIQUE>>
+  confirmation_url : VARCHAR(4096)
+  return_url : VARCHAR(2048) <<NOT NULL>>
+  created_at : TIMESTAMPTZ <<NOT NULL>>
+  updated_at : TIMESTAMPTZ <<NOT NULL>>
+  paid_at : TIMESTAMPTZ
+}
+
+entity "favorite_item" as favorite_item {
+  * id : BIGSERIAL <<PK>>
+  --
+  user_sub : VARCHAR(128) <<NOT NULL>>
+  item_type : VARCHAR(32) <<NOT NULL>>
+  item_id : VARCHAR(128) <<NOT NULL>>
+  title : VARCHAR(255) <<NOT NULL>>
+  link : VARCHAR(2048)
+  created_at : TIMESTAMPTZ <<NOT NULL, DEFAULT now()>>
+}
+
+entity "product_metric_event" as product_metric_event {
+  * id : BIGSERIAL <<PK>>
+  --
+  event_type : VARCHAR(64) <<NOT NULL>>
+  route : VARCHAR(255) <<NOT NULL>>
+  referrer : VARCHAR(2048)
+  session_id : VARCHAR(128) <<NOT NULL>>
+  user_key : VARCHAR(128) <<NOT NULL>>
+  timestamp_client : TIMESTAMPTZ <<NOT NULL>>
+  timestamp_server : TIMESTAMPTZ <<NOT NULL>>
+  payload_json : TEXT <<NOT NULL, DEFAULT '{}'>>
+}
+
+entity "project_menu_section" as project_menu_section {
+  * id : BIGSERIAL <<PK>>
+  --
+  hash : VARCHAR(128) <<UNIQUE, NOT NULL>>
+  title : VARCHAR(255) <<NOT NULL>>
+  description : TEXT <<NOT NULL>>
+  cta_title : VARCHAR(255) <<NOT NULL>>
+  cta_url : VARCHAR(512) <<NOT NULL>>
+  sort_order : INTEGER <<NOT NULL>>
+}
+
+entity "project_menu_item" as project_menu_item {
+  * id : BIGSERIAL <<PK>>
+  --
+  section_id : BIGINT <<FK, NOT NULL>>
+  title : VARCHAR(255) <<NOT NULL>>
+  description : TEXT <<NOT NULL>>
+  url : VARCHAR(512) <<NOT NULL>>
+  image_url : VARCHAR(512)
+  highlighted : BOOLEAN <<NOT NULL, DEFAULT false>>
+  sort_order : INTEGER <<NOT NULL>>
+}
+
+entity "project_menu_promo" as project_menu_promo {
+  * id : BIGSERIAL <<PK>>
+  --
+  section_id : BIGINT <<FK, NOT NULL>>
+  title : VARCHAR(255) <<NOT NULL>>
+  description : TEXT <<NOT NULL>>
+  url : VARCHAR(512) <<NOT NULL>>
+  image_url : VARCHAR(512) <<NOT NULL>>
+  sort_order : INTEGER <<NOT NULL>>
 }
 
 entity "project_type" as project_type {
   * id : BIGSERIAL <<PK>>
   --
-  title : TEXT <<UNIQUE>>
-  hash : TEXT <<UNIQUE>>
+  title : TEXT <<UNIQUE, NOT NULL>>
+  hash : TEXT <<UNIQUE, NOT NULL>>
+}
+
+entity "publication" as publication {
+  * id : BIGSERIAL <<PK>>
+  --
+  publication_year : INTEGER <<NOT NULL>>
+  authors : TEXT <<NOT NULL>>
+  theme : TEXT <<NOT NULL>>
+  published : TEXT <<NOT NULL>>
+  link : TEXT <<NOT NULL, DEFAULT ''>>
+  pdf_text : TEXT
+}
+
+entity "site_feedback" as site_feedback {
+  * id : BIGSERIAL <<PK>>
+  --
+  helpful : BOOLEAN <<NOT NULL>>
+  source : VARCHAR(255)
+  comment : TEXT
+  created_at : TIMESTAMPTZ <<NOT NULL, DEFAULT now()>>
+  user_name : VARCHAR(255)
+  user_email : VARCHAR(254)
+  user_agent : VARCHAR(512)
+  ip_address : VARCHAR(64)
 }
 
 entity "student_work" as student_work {
   * id : BIGSERIAL <<PK>>
   --
-  project_type_id : BIGINT <<FK>>
-  authors : TEXT
-  theme : TEXT
-  published : TEXT
+  project_type_id : BIGINT <<FK, NOT NULL>>
+  authors : TEXT <<NOT NULL>>
+  theme : TEXT <<NOT NULL>>
+  published : TEXT <<NOT NULL>>
+  document_link : TEXT
+  pdf_text : TEXT
 }
 
-project_type ||--o{ student_work : "project_type_id"
+entity "user_account" as user_account {
+  * id : BIGSERIAL <<PK>>
+  --
+  keycloak_sub : VARCHAR(128) <<UNIQUE, NOT NULL>>
+  name : VARCHAR(120) <<NOT NULL>>
+  email : VARCHAR(254) <<NOT NULL>>
+  created_at : TIMESTAMPTZ <<NOT NULL, DEFAULT now()>>
+  updated_at : TIMESTAMPTZ <<NOT NULL, DEFAULT now()>>
+}
+
+}
+
+chat_conversation ||--o{ chat_message : "chat_id / ON DELETE CASCADE"
+project_menu_section ||--o{ project_menu_item : "section_id / ON DELETE CASCADE"
+project_menu_section ||--o{ project_menu_promo : "section_id / ON DELETE CASCADE"
+project_type ||--o{ student_work : "project_type_id / ON DELETE RESTRICT"
+
+note right of databasechangelog
+  Служебная таблица Liquibase.
+  Композитный ключ на уровне Liquibase:
+  id + author + filename.
+end note
+
+note right of databasechangeloglock
+  Служебная таблица блокировки Liquibase.
+end note
+
+note right of donation_payment
+  Индексы:
+  - provider_payment_id UNIQUE
+  - status, created_at DESC
+  - user_sub, created_at DESC
+end note
+
+note right of favorite_item
+  Уникальность избранного:
+  user_sub + item_type + item_id.
+  Индекс: user_sub, created_at DESC.
+end note
+
+note right of product_metric_event
+  Продуктовая аналитика портала.
+  Индексы:
+  - timestamp_server
+  - event_type, timestamp_server
+  - user_key, timestamp_server
+end note
+
+note right of project_menu_section
+  Меню проектов и промо-карточки.
+  hash уникален.
+end note
 
 note right of publication
-  Публикации, сгруппированные
-  в API по году публикации.
+  Публикации с извлеченным текстом PDF
+  в поле pdf_text для поиска и AI-сценариев.
 end note
 
-note right of project_type
-  Типы проектов для
-  студенческих работ.
+note right of site_feedback
+  Обратная связь о полезности сайта
+  с пользовательским контекстом.
 end note
 
-note right of student_work
-  Студенческие работы,
-  сгруппированные в API
-  по типу проекта.
+note right of user_account
+  Локальный профиль пользователя,
+  связанный с Keycloak subject.
+  Индекс: email.
 end note
 
 @enduml
