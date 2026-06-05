@@ -79,6 +79,34 @@ jobs:
         run: |
           scp -i ~/.ssh/deploy_key deploy/compose/docker-compose.prod.yml "$DEPLOY_USER@$DEPLOY_HOST:/home/$DEPLOY_USER/poprog-portal-backend/docker-compose.yml"
 
+      - name: Upload GigaChat runtime env
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          GIGACHAT_AUTHORIZATION_KEY: ${{ secrets.GIGACHAT_AUTHORIZATION_KEY }}
+          GIGACHAT_AUTH_URL: ${{ secrets.GIGACHAT_AUTH_URL }}
+          GIGACHAT_API_URL: ${{ secrets.GIGACHAT_API_URL }}
+          GIGACHAT_SCOPE: ${{ secrets.GIGACHAT_SCOPE }}
+          GIGACHAT_MODEL: ${{ secrets.GIGACHAT_MODEL }}
+          GIGACHAT_TRUST_STORE_PASSWORD: ${{ secrets.GIGACHAT_TRUST_STORE_PASSWORD }}
+          GIGACHAT_TRUST_STORE_TYPE: ${{ secrets.GIGACHAT_TRUST_STORE_TYPE }}
+        run: |
+          if [ -z "$GIGACHAT_AUTHORIZATION_KEY" ]; then
+            echo "::error::GIGACHAT_AUTHORIZATION_KEY secret is required to enable GigaChat in production"
+            exit 1
+          fi
+          cat > gigachat.env <<EOF
+          GIGACHAT_ENABLED=true
+          GIGACHAT_AUTH_URL=${GIGACHAT_AUTH_URL:-https://ngw.devices.sberbank.ru:9443}
+          GIGACHAT_API_URL=${GIGACHAT_API_URL:-https://gigachat.devices.sberbank.ru}
+          GIGACHAT_AUTHORIZATION_KEY=${GIGACHAT_AUTHORIZATION_KEY}
+          GIGACHAT_SCOPE=${GIGACHAT_SCOPE:-GIGACHAT_API_PERS}
+          GIGACHAT_MODEL=${GIGACHAT_MODEL:-GigaChat}
+          GIGACHAT_TRUST_STORE_PASSWORD=${GIGACHAT_TRUST_STORE_PASSWORD}
+          GIGACHAT_TRUST_STORE_TYPE=${GIGACHAT_TRUST_STORE_TYPE:-PKCS12}
+          EOF
+          scp -i ~/.ssh/deploy_key gigachat.env "$DEPLOY_USER@$DEPLOY_HOST:/tmp/poprog-gigachat.env"
+
       - name: Deploy backend only
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -92,6 +120,41 @@ jobs:
           set -euo pipefail
           cd ~/poprog-portal-backend
           test -f .env
+          python3 - <<'PY'
+          from pathlib import Path
+
+          target = Path(".env")
+          fragment = Path("/tmp/poprog-gigachat.env")
+          if not fragment.exists():
+              raise SystemExit("GigaChat env fragment was not uploaded")
+
+          updates = {}
+          for line in fragment.read_text().splitlines():
+              if not line or line.lstrip().startswith("#") or "=" not in line:
+                  continue
+              key, value = line.split("=", 1)
+              updates[key] = value
+
+          lines = target.read_text().splitlines()
+          output = []
+          seen = set()
+          for line in lines:
+              if line and not line.lstrip().startswith("#") and "=" in line:
+                  key = line.split("=", 1)[0]
+                  if key in updates:
+                      output.append(f"{key}={updates[key]}")
+                      seen.add(key)
+                      continue
+              output.append(line)
+
+          for key, value in updates.items():
+              if key not in seen:
+                  output.append(f"{key}={value}")
+
+          target.write_text("\n".join(output) + "\n")
+          fragment.unlink()
+          PY
+          chmod 600 .env
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
           BACKEND_IMAGE="$BACKEND_IMAGE" docker compose pull portal-backend
@@ -114,3 +177,7 @@ jobs:
         run: |
           curl -fsS "http://${{ secrets.DEPLOY_HOST }}/actuator/health" | grep '"status":"UP"'
           curl -fsS "http://${{ secrets.DEPLOY_HOST }}/api/publications/grouped" >/dev/null
+          assistant_response="$(curl -fsS -X POST "http://${{ secrets.DEPLOY_HOST }}/api/assistant/chat" \
+            -H 'Content-Type: application/json' \
+            --data '{"messages":[{"role":"user","content":"Ответь коротко: проверка GigaChat."}]}')"
+          echo "$assistant_response" | grep -v '"model":"local-fallback"'
