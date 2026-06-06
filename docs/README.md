@@ -54,5 +54,6 @@
 - `docs/dev-header-auth.md`
 - `docs/gigachat-setup.md`
 - `docs/gigachat-truststore-setup.md`
+- `docs/architecture/README.md`
 - `docs/security-audit-2026-04-22.md`
 - `docs/min-hardware-requirements.md`

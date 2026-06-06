@@ -1,0 +1,124 @@
+@startuml
+hide footbox
+skinparam backgroundColor #ffffff
+skinparam sequenceMessageAlign center
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+skinparam ArrowThickness 1.3
+skinparam ParticipantBorderColor #334155
+skinparam ParticipantBackgroundColor #f8fafc
+skinparam NoteBorderColor #9ca3af
+skinparam NoteBackgroundColor #f9fafb
+
+title Сценарий 1. ИИ-чат: widget-router, RAG-контекст и fallback
+
+actor User as "Пользователь"
+participant FE as "Frontend\nReact"
+participant C as "AiAssistantController\n/api/assistant/chat"
+participant S as "AiAssistantService"
+participant WR as "AssistantWidgetRouter"
+participant ES as "Elasticsearch\nknowledge_search/chunks"
+participant GC as "GigaChat API"
+database PG as "PostgreSQL\nchat_conversation/chat_message"
+
+User -> FE: Ввод сообщения
+FE -> C: POST /api/assistant/chat
+C -> S: chat(command)
+S -> WR: resolve(command)
+
+alt Совпали ключевые фразы (widget)
+  WR --> S: widget-response
+  S -> PG: save messages (with widget_payload)
+  S --> C: mode=widget
+else Текстовый ответ
+  S -> ES: resolveBestDocuments/chunks
+  S -> GC: complete(messages)
+  alt GigaChat error + local/dev
+    GC --> S: error
+    S --> S: buildLocalFallbackResponse()
+  else success
+    GC --> S: ai response
+  end
+  S -> PG: save conversation + messages
+  S --> C: mode=text + hints
+end
+
+C --> FE: HTTP 200
+FE --> User: Рендер ответа/виджета
+
+note right of S
+Локальный fallback включается
+только при activeProfiles local/dev.
+end note
+
+newpage
+
+hide footbox
+title Сценарий 2. Донаты: публичный поток, аккаунтный поток, экспорт
+
+actor User2 as "Пользователь"
+participant FE2 as "Frontend\nDonate/Account"
+participant DC as "PublicDonationController\nили AccountDonationController"
+participant DS as "AccountDonationService"
+database PG2 as "PostgreSQL\ndonation_payment"
+participant PAY as "Платёжный провайдер\n(ЮKassa target / local stub)"
+
+User2 -> FE2: submit donation
+FE2 -> DC: POST /api/donations\nили /api/account/donations
+DC -> DS: createDonation()
+DS -> PG2: INSERT status=PENDING
+DC --> FE2: 201 + confirmationUrl
+FE2 -> PAY: redirect/open confirmation
+
+opt Локальная отладка статуса
+  FE2 -> DC: POST /api/account/donations/{id}/status
+  DC -> DS: updateDonationStatus()
+  DS -> PG2: UPDATE status/providerPaymentId/paidAt
+end
+
+opt Экспорт истории
+  FE2 -> DC: GET export.csv / export.pdf
+  DC -> DS: exportDonationsCsv/Pdf
+  DS -> PG2: SELECT by userSub + period
+  DC --> FE2: file payload
+end
+
+newpage
+
+hide footbox
+title Сценарий 3. Поиск + просмотр PDF + метрики
+
+actor User3 as "Пользователь"
+participant FE3 as "Frontend\nSearch UI"
+participant SC as "SearchController\n/api/search"
+participant SS as "SearchService"
+participant ES2 as "Elasticsearch"
+participant FC as "FileAccessController\n/api/files/{path}"
+collections FS as "Local storage\nPDF files"
+participant MC as "ProductMetricsController\n/api/metrics/events"
+database PG3 as "PostgreSQL\nproduct_metric_event"
+
+User3 -> FE3: query q (>=3)
+FE3 -> SC: GET /api/search?q=...
+SC -> SS: search(query, limit)
+SS -> ES2: fulltext + partial match
+ES2 --> SS: search hits
+SS --> SC: mixed results
+SC --> FE3: response items
+
+User3 -> FE3: click result link
+FE3 -> FC: GET /api/files/{path}
+FC -> FC: normalizePath + PDF-only + traversal check
+FC -> FS: read file
+alt file ok
+  FC --> FE3: 200 inline application/pdf
+else invalid path/type/not found
+  FC --> FE3: 400/404 html error-screen
+end
+
+par Async analytics
+  FE3 -> MC: POST /api/metrics/events
+  MC -> PG3: saveEvent(payload_json)
+end
+
+@enduml

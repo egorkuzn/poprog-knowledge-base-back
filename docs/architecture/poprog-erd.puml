@@ -1,0 +1,169 @@
+@startuml
+hide methods
+hide stereotypes
+skinparam backgroundColor #ffffff
+skinparam classBackgroundColor #f8fafc
+skinparam classBorderColor #334155
+skinparam ArrowColor #0f172a
+skinparam shadowing false
+
+entity "publication" as publication {
+  * id : BIGSERIAL <<PK>>
+  --
+  publication_year : INTEGER
+  authors : TEXT
+  theme : TEXT
+  published : TEXT
+  link : TEXT
+  pdf_text : TEXT
+}
+
+entity "project_type" as project_type {
+  * id : BIGSERIAL <<PK>>
+  --
+  title : TEXT <<UNIQUE>>
+  hash : TEXT <<UNIQUE>>
+}
+
+entity "student_work" as student_work {
+  * id : BIGSERIAL <<PK>>
+  --
+  project_type_id : BIGINT <<FK>>
+  authors : TEXT
+  theme : TEXT
+  published : TEXT
+  document_link : TEXT
+  pdf_text : TEXT
+}
+
+entity "project_menu_section" as section {
+  * id : BIGSERIAL <<PK>>
+  --
+  hash : VARCHAR(128) <<UNIQUE>>
+  title : VARCHAR(255)
+  description : TEXT
+  cta_title : VARCHAR(255)
+  cta_url : VARCHAR(512)
+  sort_order : INTEGER
+}
+
+entity "project_menu_item" as item {
+  * id : BIGSERIAL <<PK>>
+  --
+  section_id : BIGINT <<FK>>
+  title : VARCHAR(255)
+  description : TEXT
+  url : VARCHAR(512)
+  image_url : VARCHAR(512)
+  highlighted : BOOLEAN
+  sort_order : INTEGER
+}
+
+entity "project_menu_promo" as promo {
+  * id : BIGSERIAL <<PK>>
+  --
+  section_id : BIGINT <<FK>>
+  title : VARCHAR(255)
+  description : TEXT
+  url : VARCHAR(512)
+  image_url : VARCHAR(512)
+  sort_order : INTEGER
+}
+
+entity "chat_conversation" as chat_conversation {
+  * id : UUID <<PK>>
+  --
+  owner_sub : VARCHAR(128)
+  created_at : TIMESTAMPTZ
+}
+
+entity "chat_message" as chat_message {
+  * id : BIGSERIAL <<PK>>
+  --
+  chat_id : UUID <<FK>>
+  role : VARCHAR(16)
+  content : TEXT
+  widget_payload : TEXT
+  created_at : TIMESTAMPTZ
+}
+
+entity "user_account" as user_account {
+  * id : BIGSERIAL <<PK>>
+  --
+  keycloak_sub : VARCHAR(128) <<UNIQUE>>
+  name : VARCHAR(120)
+  email : VARCHAR(254)
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+}
+
+entity "favorite_item" as favorite_item {
+  * id : BIGSERIAL <<PK>>
+  --
+  user_sub : VARCHAR(128)
+  item_type : VARCHAR(32)
+  item_id : VARCHAR(128)
+  title : VARCHAR(255)
+  link : VARCHAR(2048)
+  created_at : TIMESTAMPTZ
+}
+
+entity "donation_payment" as donation_payment {
+  * id : UUID <<PK>>
+  --
+  user_sub : VARCHAR(128)
+  amount : NUMERIC(12,2)
+  currency : CHAR(3)
+  status : VARCHAR(32)
+  source : VARCHAR(255)
+  message : VARCHAR(1000)
+  provider_payment_id : VARCHAR(128)
+  confirmation_url : VARCHAR(4096)
+  return_url : VARCHAR(2048)
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+  paid_at : TIMESTAMPTZ
+}
+
+entity "product_metric_event" as metric {
+  * id : BIGSERIAL <<PK>>
+  --
+  event_type : VARCHAR(64)
+  route : VARCHAR(255)
+  referrer : VARCHAR(2048)
+  session_id : VARCHAR(128)
+  user_key : VARCHAR(128)
+  timestamp_client : TIMESTAMPTZ
+  timestamp_server : TIMESTAMPTZ
+  payload_json : TEXT
+}
+
+entity "site_feedback" as site_feedback {
+  * id : BIGSERIAL <<PK>>
+  --
+  helpful : BOOLEAN
+  source : VARCHAR(255)
+  comment : TEXT
+  user_name : VARCHAR(255)
+  user_email : VARCHAR(254)
+  user_agent : VARCHAR(512)
+  ip_address : VARCHAR(64)
+  created_at : TIMESTAMPTZ
+}
+
+project_type ||--o{ student_work : project_type_id
+section ||--o{ item : section_id
+section ||--o{ promo : section_id
+chat_conversation ||--o{ chat_message : chat_id
+
+user_account .. chat_conversation : owner_sub = keycloak_sub
+user_account .. favorite_item : user_sub = keycloak_sub
+user_account .. donation_payment : user_sub = keycloak_sub
+user_account .. metric : user_key (logical)
+
+note bottom
+Сплошные связи — физические FK.
+Пунктир — логические связи по subject/user key на уровне приложения.
+Источник: Liquibase changelog 001..017.
+end note
+@enduml
