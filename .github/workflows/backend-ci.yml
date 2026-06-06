@@ -90,9 +90,14 @@ jobs:
           GIGACHAT_MODEL: ${{ secrets.GIGACHAT_MODEL }}
           GIGACHAT_TRUST_STORE_PASSWORD: ${{ secrets.GIGACHAT_TRUST_STORE_PASSWORD }}
           GIGACHAT_TRUST_STORE_TYPE: ${{ secrets.GIGACHAT_TRUST_STORE_TYPE }}
+          GIGACHAT_TRUST_STORE_BASE64: ${{ secrets.GIGACHAT_TRUST_STORE_BASE64 }}
         run: |
           if [ -z "$GIGACHAT_AUTHORIZATION_KEY" ]; then
             echo "::error::GIGACHAT_AUTHORIZATION_KEY secret is required to enable GigaChat in production"
+            exit 1
+          fi
+          if [ -z "$GIGACHAT_TRUST_STORE_BASE64" ]; then
+            echo "::error::GIGACHAT_TRUST_STORE_BASE64 secret is required for production GigaChat TLS"
             exit 1
           fi
           cat > gigachat.env <<EOF
@@ -102,10 +107,13 @@ jobs:
           GIGACHAT_AUTHORIZATION_KEY=${GIGACHAT_AUTHORIZATION_KEY}
           GIGACHAT_SCOPE=${GIGACHAT_SCOPE:-GIGACHAT_API_PERS}
           GIGACHAT_MODEL=${GIGACHAT_MODEL:-GigaChat}
+          GIGACHAT_TRUST_STORE_PATH=/app/secrets/gigachat-truststore.p12
           GIGACHAT_TRUST_STORE_PASSWORD=${GIGACHAT_TRUST_STORE_PASSWORD}
           GIGACHAT_TRUST_STORE_TYPE=${GIGACHAT_TRUST_STORE_TYPE:-PKCS12}
           EOF
+          printf '%s' "$GIGACHAT_TRUST_STORE_BASE64" > gigachat-truststore.p12.b64
           scp -i ~/.ssh/deploy_key gigachat.env "$DEPLOY_USER@$DEPLOY_HOST:/tmp/poprog-gigachat.env"
+          scp -i ~/.ssh/deploy_key gigachat-truststore.p12.b64 "$DEPLOY_USER@$DEPLOY_HOST:/tmp/poprog-gigachat-truststore.p12.b64"
 
       - name: Deploy backend only
         env:
@@ -120,6 +128,14 @@ jobs:
           set -euo pipefail
           cd ~/poprog-portal-backend
           test -f .env
+          mkdir -p secrets
+          if [ ! -s /tmp/poprog-gigachat-truststore.p12.b64 ]; then
+            echo "GigaChat trust store artifact was not uploaded" >&2
+            exit 1
+          fi
+          base64 -d /tmp/poprog-gigachat-truststore.p12.b64 > secrets/gigachat-truststore.p12
+          rm -f /tmp/poprog-gigachat-truststore.p12.b64
+          chmod 600 secrets/gigachat-truststore.p12
           python3 - <<'PY'
           from pathlib import Path
 
@@ -174,10 +190,29 @@ jobs:
           REMOTE
 
       - name: Public smoke check
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
-          curl -fsS "http://${{ secrets.DEPLOY_HOST }}/actuator/health" | grep '"status":"UP"'
-          curl -fsS "http://${{ secrets.DEPLOY_HOST }}/api/publications/grouped" >/dev/null
-          assistant_response="$(curl -fsS -X POST "http://${{ secrets.DEPLOY_HOST }}/api/assistant/chat" \
+          dump_backend_logs() {
+            echo "::group::Sanitized backend logs"
+            ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+              "docker logs --tail=220 poprog-portal-backend 2>&1" \
+              | grep -E 'GigaChat|gigachat|PKIX|SSL|certificate|OAuth|oauth|RestClient|HttpClient|Exception|ERROR|WARN|assistant' \
+              | sed -E 's/(Authorization: Basic )[A-Za-z0-9+\/=._-]+/\1***MASKED***/g; s/(GIGACHAT_AUTHORIZATION_KEY=).*/\1***MASKED***/g; s/(password[=: ]+)[^ ]+/\1***MASKED***/Ig' \
+              || true
+            echo "::endgroup::"
+          }
+
+          curl -fsS "http://$DEPLOY_HOST/actuator/health" | grep '"status":"UP"'
+          curl -fsS "http://$DEPLOY_HOST/api/publications/grouped" >/dev/null
+          assistant_response="$(curl -fsS -X POST "http://$DEPLOY_HOST/api/assistant/chat" \
             -H 'Content-Type: application/json' \
-            --data '{"messages":[{"role":"user","content":"Ответь коротко: проверка GigaChat."}]}')"
-          echo "$assistant_response" | grep -v '"model":"local-fallback"'
+            --data '{"messages":[{"role":"user","content":"Ответь коротко: проверка GigaChat."}]}')" || {
+              dump_backend_logs
+              exit 1
+            }
+          echo "$assistant_response" | grep -v '"model":"local-fallback"' || {
+            dump_backend_logs
+            exit 1
+          }

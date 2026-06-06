@@ -1,0 +1,73 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam ArrowColor #111827
+skinparam componentBorderColor #334155
+skinparam componentBackgroundColor #f8fafc
+
+
+title Высокоуровневая архитектура Poprog
+
+actor User as "Пользователь"
+actor Admin as "Администратор"
+
+package "Клиентский слой" #EFF6FF {
+  component FE as "Фронтенд\nReact + TypeScript + Vite"
+  component UIM as "UI-модули\nГлавная / Проекты / Поиск /\n Маркет / Личный кабинет / Донаты / ИИ-чат"
+}
+
+package "Прикладной слой" #F0FDF4 {
+  component API as "API на Spring Boot\n(Kotlin)"
+  component CTRL as "Входные адаптеры\nREST-контроллеры"
+  component APP as "Прикладные сервисы\nПоиск / Ассистент / Личный кабинет /\n Донаты / Метрики / Файлы"
+  component AUTH as "Контекст авторизации\nCurrentUserArgumentResolver\n+ DevHeadersCurrentUserProvider"
+}
+
+package "Слой данных и интеграций" #FAF5FF {
+  component RIDE as "RIDE / внешние порталы"
+  database PG as "PostgreSQL\nоперационные данные"
+  collections ES as "Elasticsearch\nиндексы knowledge_search + chunks"
+  cloud KC as "Keycloak\nOIDC / JWT / Роли"
+  cloud GC as "API GigaChat\nOAuth + генерация ответов"
+  cloud PAY as "Платежный провайдер\nЮKassa (целевой)"
+}
+
+User --> FE : Работа в браузере
+Admin --> FE : Работа администратора
+FE --> UIM
+FE --> API : REST /api/*
+FE ..> KC : Вход (OIDC Authorization Code + PKCE)
+API --> CTRL
+CTRL --> APP
+CTRL --> AUTH
+AUTH ..> KC : Проверка JWT\nissuer + JWK set
+API ..> KC : Источник ролей и клеймов
+
+FE ..> RIDE : Переход на внешние ресурсы
+APP --> PG : JPA/Liquibase
+APP --> ES : Индексация и поиск
+APP --> GC : Генерация ответов LLM
+APP ..> PAY : Инициализация/статус платежа
+
+'AUTH -[hidden]down-> APP
+'KC -[hidden]down-> PG
+'PG -[hidden]down-> API
+'PG -[hidden]down-> ES
+'ES -[hidden]right-> RIDE
+
+note left of APP
+Поток продуктовых метрик:
+Фронтенд
+|
+V
+/api/metrics/events
+|
+V
+PostgreSQL(product_metric_event)
++ отчетные endpoint-ы (/reports/*)
+end note
+
+@enduml

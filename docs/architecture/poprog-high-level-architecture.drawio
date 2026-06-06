@@ -1,0 +1,47 @@
+<mxfile host="app.diagrams.net" modified="2026-04-26T09:50:00.000Z" agent="Codex" version="26.0.11" type="device">
+  <diagram id="arch-main" name="High-Level Architecture (formatted)">
+    <mxGraphModel dx="1860" dy="1040" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="Высокоуровневая архитектура Poprog" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#111827;strokeColor=#030712;fontColor=#ffffff;fontSize=18;fontStyle=1" vertex="1" parent="1"><mxGeometry x="30" y="20" width="2300" height="56" as="geometry"/></mxCell>
+
+        <mxCell id="3" value="Client Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#93c5fd;fontStyle=1" vertex="1" parent="1"><mxGeometry x="30" y="100" width="520" height="450" as="geometry"/></mxCell>
+        <mxCell id="4" value="Application Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#86efac;fontStyle=1" vertex="1" parent="1"><mxGeometry x="580" y="100" width="810" height="450" as="geometry"/></mxCell>
+        <mxCell id="5" value="Data &amp; Integration Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faf5ff;strokeColor=#d8b4fe;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1420" y="100" width="910" height="900" as="geometry"/></mxCell>
+
+        <mxCell id="10" value="Пользовательский браузер" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontStyle=1" vertex="1" parent="1"><mxGeometry x="70" y="160" width="210" height="60" as="geometry"/></mxCell>
+        <mxCell id="11" value="Frontend\nReact + TypeScript + Vite" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#16a34a;fontStyle=1" vertex="1" parent="1"><mxGeometry x="70" y="250" width="310" height="90" as="geometry"/></mxCell>
+        <mxCell id="12" value="UI modules:\nHome, Projects, Search, Market, Account, Donate, AI Chat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#9ca3af;align=left;spacingLeft=8" vertex="1" parent="1"><mxGeometry x="70" y="360" width="450" height="120" as="geometry"/></mxCell>
+
+        <mxCell id="20" value="Backend API\nSpring Boot (Kotlin)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3c7;strokeColor=#d97706;fontStyle=1" vertex="1" parent="1"><mxGeometry x="620" y="160" width="290" height="70" as="geometry"/></mxCell>
+        <mxCell id="21" value="Inbound adapters (REST controllers)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#fb923c" vertex="1" parent="1"><mxGeometry x="940" y="160" width="290" height="60" as="geometry"/></mxCell>
+        <mxCell id="22" value="Application services:\n- SearchService\n- AiAssistantService\n- AccountProfile/Donation/Favorite\n- ProductMetricsService\n- SiteFeedbackService\n- FileStorageService" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#fb923c;align=left;spacingLeft=8" vertex="1" parent="1"><mxGeometry x="620" y="260" width="610" height="200" as="geometry"/></mxCell>
+        <mxCell id="23" value="Auth context:\nCurrentUserArgumentResolver + DevHeadersCurrentUserProvider" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626" vertex="1" parent="1"><mxGeometry x="620" y="480" width="610" height="60" as="geometry"/></mxCell>
+
+        <mxCell id="30" value="PostgreSQL\nоперационные таблицы\n(publication, student_work, user_account, chat_*, donation_payment, metrics...)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede9fe;strokeColor=#7c3aed;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1460" y="160" width="360" height="140" as="geometry"/></mxCell>
+        <mxCell id="31" value="Elasticsearch\nknowledge_search + chunk index" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffedd5;strokeColor=#ea580c;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1860" y="160" width="300" height="100" as="geometry"/></mxCell>
+        <mxCell id="32" value="Local file storage\n(app.files.storage-dir)\nдоступ через /api/files/*path" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3f4f6;strokeColor=#6b7280;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1460" y="330" width="360" height="120" as="geometry"/></mxCell>
+        <mxCell id="33" value="GigaChat\nOAuth + chat completions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffedd5;strokeColor=#c2410c;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1860" y="310" width="300" height="100" as="geometry"/></mxCell>
+        <mxCell id="34" value="Платёжный контур\nЮKassa (target)\n+ текущий local confirmation flow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffedd5;strokeColor=#c2410c;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1460" y="490" width="360" height="120" as="geometry"/></mxCell>
+        <mxCell id="35" value="RIDE / внешние порталы" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb" vertex="1" parent="1"><mxGeometry x="1860" y="490" width="300" height="70" as="geometry"/></mxCell>
+
+        <mxCell id="40" value="HTTPS" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="10" target="11"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="41" value="REST /api/*" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="11" target="20"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="42" value="request pipeline" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="20" target="21"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="43" value="use-cases" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="21" target="22"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="44" value="auth context" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="21" target="23"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="45" value="JPA/Liquibase" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="22" target="30"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="46" value="index/search" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="22" target="31"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="47" value="read/store files" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="22" target="32"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="48" value="LLM calls" style="endArrow=block;html=1;strokeWidth=2;strokeColor=#111827" edge="1" parent="1" source="22" target="33"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="49" value="payment init/status" style="endArrow=block;html=1;dashed=1;strokeColor=#c2410c" edge="1" parent="1" source="22" target="34"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="50" value="external nav" style="endArrow=block;html=1;dashed=1;strokeColor=#2563eb" edge="1" parent="1" source="11" target="35"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="60" value="Observability &amp; analytics:\nFront отправляет события в /api/metrics/events → backend сохраняет в product_metric_event\nи строит отчёты DAU/WAU, успешности поиска и отчет по кликам и показам по типам источников." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#9ca3af;align=left;spacingLeft=12" vertex="1" parent="1"><mxGeometry x="30" y="1040" width="2300" height="100" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

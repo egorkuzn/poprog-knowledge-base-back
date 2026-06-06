@@ -96,6 +96,7 @@ docker compose up -d
 Deployment-конфигурация хранится в репозиториях приложения и описывает как локальный контейнерный запуск backend, так и production-поставку на виртуальную машину. Подробное описание deployment-контура, требований и текст для дипломного отчета вынесены в общий документ:
 
 - [docs/deployment-production-report.md](docs/deployment-production-report.md)
+- [docs/architecture/README.md](docs/architecture/README.md)
 
 ### Production-схема
 
